@@ -9,7 +9,7 @@
 	<version>1.0.0</version>
 	<description>PLG_SYSTEM_HITOBITOAUTH_XML_DESCRIPTION</description>
 	<files>
-		<filename plugin="plg_attnot">hitobitoauth.php</filename>
+		<filename plugin="hitobitoauth">hitobitoauth.php</filename>
 		<filename>index.html</filename>
 		<folder>language</folder>
 	</files>
@@ -22,6 +22,14 @@
 	<config>
 		<fields name="params">
 			<fieldset name="basic">
+				<field
+					type="url"
+					name="redirecturi"
+					label="PLG_SYSTEM_HITOBITOAUTH_REDIRECTURI_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_REDIRECTURI_DESC"
+					default="http://localhost/joomla3/"
+					readonly="true"
+				/>
 				<field
 					type="text"
 					name="clientid"
@@ -37,11 +45,18 @@
 					required="true"
 				/>
 				<field
-					type="url"
-					name="redirecturi"
-					label="PLG_SYSTEM_HITOBITOAUTH_REDIRECTURI_LABEL"
-					description="PLG_SYSTEM_HITOBITOAUTH_REDIRECTURI_DESC"
+					type="text"
+					name="clienthost"
+					label="PLG_SYSTEM_HITOBITOAUTH_CLIENTHOST_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_CLIENTHOST_DESC"
+					hint="http://example.org"
 					required="true"
+				/>
+				<field
+					name="note_api"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_APINOTE_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_APINOTE_DESC"
 				/>
 				<field
 					type="spacer"
@@ -49,16 +64,33 @@
 					hr="true"
 				/>
 				<field
-					name="implicitloginallowed"
-					type="radio"
-					label="PLG_SYSTEM_HITOBITOAUTH_IMPLICITLOGIN_LABEL"
-					description="PLG_SYSTEM_HITOBITOAUTH_IMPLICITLOGIN_DESC"
-					class="btn-group btn-group-yesno"
-					default="1"
-				>
-					<option value="1">JYES</option>
-					<option value="0">JNO</option>
-				</field>
+					type="text"
+					name="hitobito_name"
+					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITONAME_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITONAME_DESC"
+					default="Hitobito"
+				/>
+				<field
+					type="color"
+					name="hitobito_bgcolor"
+					default="#99bf62"
+					format="rgba"
+					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOBGCOLOR_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOBGCOLOR_DESC"
+				/>
+				<field
+					type="color"
+					name="hitobito_color"
+					default="#fff"
+					format="rgba"
+					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOCOLOR_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOCOLOR_DESC"
+				/>
+				<field
+					type="spacer"
+					name="spacer"
+					hr="true"
+				/>
 				<field
 					name="registrationallowed"
 					type="radio"
