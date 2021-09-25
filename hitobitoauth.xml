@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension version="3.1" type="plugin" group="system" method="upgrade">
+	<name>plg_system_hitobitoauth</name>
+	<author>Schlumpf</author>
+	<creationDate>October 2021</creationDate>
+	<license>GNU General Public License version 2 or later; see LICENSE.txt</license>
+	<authorEmail>tech.spuur@quickline.com</authorEmail>
+	<authorUrl>https://tech.spuur.ch</authorUrl>
+	<version>1.0.0</version>
+	<description>PLG_SYSTEM_HITOBITOAUTH_XML_DESCRIPTION</description>
+	<files>
+		<filename plugin="plg_attnot">hitobitoauth.php</filename>
+		<filename>index.html</filename>
+		<folder>language</folder>
+	</files>
+	<languages folder="language">
+		<language tag="en-GB">en-GB/en-GB.plg_system_hitobitoauth.ini</language>
+		<language tag="en-GB">en-GB/en-GB.plg_system_hitobitoauth.sys.ini</language>
+		<language tag="de-DE">de-DE/de-DE.plg_system_hitobitoauth.ini</language>
+		<language tag="de-DE">de-DE/de-DE.plg_system_hitobitoauth.sys.ini</language>
+	</languages>
+	<config>
+		<fields name="params">
+			<fieldset name="basic">
+				<field
+					type="text"
+					name="clientid"
+					label="PLG_SYSTEM_HITOBITOAUTH_CLIENTID_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_CLIENTID_DESC"
+					required="true"
+				/>
+				<field
+					type="text"
+					name="clientsecret"
+					label="PLG_SYSTEM_HITOBITOAUTH_CLIENTSECRET_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_CLIENTSECRET_DESC"
+					required="true"
+				/>
+				<field
+					type="url"
+					name="redirecturi"
+					label="PLG_SYSTEM_HITOBITOAUTH_REDIRECTURI_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_REDIRECTURI_DESC"
+					required="true"
+				/>
+				<field
+					type="spacer"
+					name="spacer"
+					hr="true"
+				/>
+				<field
+					name="implicitloginallowed"
+					type="radio"
+					label="PLG_SYSTEM_HITOBITOAUTH_IMPLICITLOGIN_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_IMPLICITLOGIN_DESC"
+					class="btn-group btn-group-yesno"
+					default="1"
+				>
+					<option value="1">JYES</option>
+					<option value="0">JNO</option>
+				</field>
+				<field
+					name="registrationallowed"
+					type="radio"
+					label="PLG_SYSTEM_HITOBITOAUTH_AUTOREGISTER_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_AUTOREGISTER_DESC"
+					class="btn-group btn-group-yesno"
+					default="1"
+				>
+					<option value="1">JYES</option>
+					<option value="0">JNO</option>
+				</field>
+			</fieldset>
+		</fields>
+	</config>
+	<updateservers>
+      <server type="extension" name="Systemplugin - Attnot" priority="1">https://updates.spuur.ch/plg_hitobitoauth.xml</server>
+  </updateservers>
+</extension>
