@@ -11,6 +11,8 @@
 defined('_JEXEC') or die;
 
 use \Joomla\CMS\Factory;
+use \Joomla\CMS\User\User;
+use \Joomla\CMS\Access\Access;
 use \Joomla\CMS\Component\ComponentHelper;
 use \Joomla\CMS\Plugin\PluginHelper;
 use \Joomla\CMS\User\UserHelper;
@@ -19,6 +21,10 @@ use \Joomla\CMS\Language\Text;
 use \Joomla\CMS\Router\Route;
 use \Joomla\CMS\Cache\Cache;
 use \Joomla\CMS\Uri\Uri;
+use \Joomla\CMS\Form\Form;
+use \Joomla\Registry\Registry;
+use \Joomla\CMS\Authentication\Authentication;
+use \Joomla\CMS\Authentication\AuthenticationResponse as JAuthResponse; 
 
 /**
  * Plugin class for login/register with hitobito account.
@@ -60,12 +66,28 @@ class PlgSystemHitobitoauth extends JPlugin
 	protected $credentials = array();
 
 	/**
+	 * User roles based on selected group
+	 *
+	 * @var    array
+	 * @since  1.0.0
+	 */
+	protected $roles = array();
+
+	/**
 	 * User credentials from hitobito
 	 *
 	 * @var    JUser object
 	 * @since  1.0.0
 	 */
 	protected $hitobito_user = false;
+
+	/**
+	 * Error during login process
+	 *
+	 * @var    bool
+	 * @since  1.0.0
+	 */
+	protected $error = false;
 
 	/**
 	 * Allowed contexts
@@ -86,7 +108,7 @@ class PlgSystemHitobitoauth extends JPlugin
 	 * @param   object  &$subject  The object to observe -- event dispatcher.
 	 * @param   object  $config    An optional associative array of configuration settings.
 	 *
-	 * @since   1.0.0
+	 * @return  void
 	 */
 	public function __construct(&$subject, $config)
 	{
@@ -105,18 +127,17 @@ class PlgSystemHitobitoauth extends JPlugin
 	}
 
 	/**
-	 * Method to get the authentication from hitobito
+	 * Method to authenticate a user via OAuth and
+	 * fetch the user info from hitobito
 	 *
-	 * @return  -
-	 *
-	 * @since   1.0.0
+	 * @return  void
 	 */
 	public function onAfterRoute()
 	{
 		if((Factory::getApplication()->input->get('task',null)=='oauth' && 
-			Factory::getApplication()->input->get('app',null)=='hitobito') ||
-			Factory::getApplication()->input->get('state',null)=='oauth' &&
-			Factory::getApplication()->input->get('code',null) != null)
+		Factory::getApplication()->input->get('app',null)=='hitobito') ||
+		Factory::getApplication()->input->get('state',null)=='oauth' &&
+		Factory::getApplication()->input->get('code',null) != null)
 		{
 			jimport('joomla.oauth2.client');
 
@@ -133,43 +154,55 @@ class PlgSystemHitobitoauth extends JPlugin
 			$oauth_client->authenticate();
 			$this->token = $oauth_client->getToken()['access_token'];
 			$this->oauth_client = $oauth_client;
+
 			if($oauth_client->isAuthenticated())
 			{
 				// Fetch authenticated user info
-	            $opts = array(
-				  'http'=>array(
-				    'method'=>'GET',
-				    'header'=>"Authorization: Bearer $this->token\r\n" .
-				              "X-Scope: with_roles\r\n"
-				  )
+				$opts = array(
+				'http'=>array(
+					'method'=>'GET',
+					'header'=>"Authorization: Bearer $this->token\r\n" .
+							"X-Scope: with_roles\r\n"
+				)
 				);
 				$context = stream_context_create($opts);
 				$file = file_get_contents($this->params->get('clienthost','https://demo.hitobito.com').'/oauth/profile', false, $context);
 
-				// safe user info to credentials
-				$this->credentials = json_decode($file, true,);
+				// Safe user info to credentials
+				$this->credentials = json_decode($file, true);
 
-				$response = new stdClass();
+				// Get roles of user based on group
+				$this->roles = $this->getRolesOfGroup($this->params->get('hitobito_groupid', 0));
+
+				// Get hitobito id from current user
+				$this->hitobito_user = $this->getUserByHitobitoID($this->credentials['id']);
+
+				// prepare the response object
+				$response = new JAuthResponse();
 				$options  = array();
-				$this->onUserAuthenticate($this->credentials,$options,$response);
+				$this->onUserAuthenticate($options, $response);
 
-				if ($this->params->get('implicitloginallowed', false) && $this->hitobito_user->id > 0 ||
-					$this->params->get('registrationallowed', false) && $this->hitobito_user->id == 0)
+				if($this->params->get('registrationallowed', true) && $this->hitobito_user === true
+					&& $response->status == Authentication::STATUS_SUCCESS)
 				{
-					// user exist -> Login.
-					$options = array('action'=>'core.login.'.(Factory::getApplication()->isSite()?'site':'admin'));
-					if($this->login($options, $response))
-					{
-						// if not redirected on onAfterLogin just go to front page //
-						Factory::getApplication()->redirect(Route::_('index.php'));
-					}
+					// perform registration
+					$this->registerUser($response);
 				}
-				else
+
+				if($this->hitobito_user instanceof User && $this->params->get('updateallowed', true)
+					&& $response->status == Authentication::STATUS_SUCCESS)
 				{
-					$this->hitobito_user->id = false;
-					Factory::getApplication()->enqueueMessage('User from Hitobito does not exist in Joomla. Please register first.', 'error');
-					Factory::getApplication()->redirect(Route::_('index.php'));
+					// update the current joomla user based on hitobito data
+					$this->updateUser();
 				}
+
+				$options = array('action' => 'core.login.'.(Factory::getApplication()->isSite()?'site':'admin'),
+								'autoregister' => false);
+				
+				$this->login($options, $response);
+
+				// if not redirected on onAfterLogin just go to front page //
+				Factory::getApplication()->redirect(Route::_('index.php'));
 			}
 		}
 	}
@@ -177,9 +210,7 @@ class PlgSystemHitobitoauth extends JPlugin
 	/**
 	 * Method to add the hitobito login button
 	 *
-	 * @return  -
-	 *
-	 * @since   1.0.0
+	 * @return  void
 	 */
 	public function onBeforeRender()
 	{
@@ -198,7 +229,7 @@ class PlgSystemHitobitoauth extends JPlugin
 			$doc->addScriptDeclaration($script);
 
 			// css button
-			$css = '.btn-hitobito,.btn-hitobito:hover,.btn-hitobito:active,.btn-hitobito:focus {margin-left: 5px; background-color: '.$this->params->get('hitobito_bgcolor','#99bf62').'; color: '.$this->params->get('hitobito_color','#fff').'; background-image: linear-gradient(to bottom,'.$this->params->get('hitobito_bgcolor','#99bf62').','.$this->params->get('hitobito_bgcolor','#99bf62').');}';
+			$css = '.btn-hitobito,.btn-hitobito:hover,.btn-hitobito:active,.btn-hitobito:focus {margin-left: 5px; background-color: '.$this->params->get('hitobito_bgcolor','#99bf62').'; color: '.$this->params->get('hitobito_color','#fff').'; background-image: linear-gradient(to bottom,'.$this->params->get('hitobito_bgcolor','#99bf62').','.$this->params->get('hitobito_bgcolor','#99bf62').'); text-shadow: initial;}';
 			$doc->addStyleDeclaration($css);
 
 			// html button
@@ -211,67 +242,17 @@ class PlgSystemHitobitoauth extends JPlugin
 		}
 	}
 
-	public function onUserAuthenticate($credentials, $options, &$response)
-	{
-		if(Factory::getApplication()->input->get('state',null)=='oauth' &&
-			Factory::getApplication()->input->get('code',null) != null)
-		{
-			$this->hitobito_user = $this->getUserByHitobitoID($credentials['id']);
-
-			jimport('joomla.authentication.authentication');
-			jimport('joomla.user.authentication');
-			$response->type = 'JOAuth';
-
-			if( (Factory::getApplication()->input->get('state',null) != 'oauth') ||
-				 $this->hitobito_user === false)
-			{
-				// authentification failed
-				$response->status = JAuthentication::STATUS_FAILURE;
-				return;
-			}
-			elseif(Factory::getApplication()->input->get('state',null) == 'oauth' &&
-				    $this->hitobito_user === true)
-			{
-				// authentification successful, joomla user dont exist
-				// hitobito_id was not found in #__users params row
-				$params = '{"admin_style":"","admin_language":"","language":"","editor":"","timezone":"","hitobito_id":'.$credentials['id'].'}';
-
-				$response->username = $credentials['email'];
-				$response->email    = $credentials['email'];
-				$response->fullname = $credentials['first_name'].' '.$credentials['last_name'];
-				$response->params   = $params;
-
-				$response->status        = JAuthentication::STATUS_SUCCESS;
-				$response->error_message = '';
-			}
-			else
-			{
-				// authentification successful, joomla user exists
-				// hitobito_id was found in #__users params row
-				$response->username = $this->hitobito_user->username;
-				$response->email    = $this->hitobito_user->email;
-				$response->fullname = $this->hitobito_user->name;
-				$response->params   = $this->hitobito_user->params;
-
-				$response->status        = JAuthentication::STATUS_SUCCESS;
-				$response->error_message = '';
-			}
-		}
-	}
-
 	/**
-	 * Method is called after a form was instantiated
+	 * Add the hitobito id field to the user form
 	 *
 	 * @param   object  $form The form to be altered
 	 * @param   array   $data The associated data for the form
 	 * 
-	 * @return  boolean True on success, false otherwise
-	 * 
-	 * @since   1.0.0
+	 * @return  bool    True on success, false otherwise
 	 */
 	public function onContentPrepareForm($form, $data)
 	{
-		if(!($form instanceof JForm))
+		if(!($form instanceof Form))
 	    {
 	    	$this->_subject->setError(′JERROR_NOT_A_FORM′);
 	    	return false;
@@ -284,12 +265,71 @@ class PlgSystemHitobitoauth extends JPlugin
 			return true;
 		}
 
-		JForm::addFormPath(__DIR__);
+		Form::addFormPath(__DIR__.DIRECTORY_SEPARATOR.'forms');
 		$form->loadFile('user-form', false);
 
 		return true;
 	}
 
+	/**
+	 * Method to append the required information to the $response object.
+	 * 
+	 * @param   array           $options       Options array
+	 * @param   JAuthResponse   $response      Authentication response object
+	 * 
+	 * @return  bool            true on success, false otherwise
+	 */
+	public function onUserAuthenticate($options, &$response)
+	{
+		if(Factory::getApplication()->input->get('state',null)=='oauth' &&
+			Factory::getApplication()->input->get('code',null) != null)
+		{
+			$response->type = 'JOAuth';
+
+			if(Factory::getApplication()->input->get('state',null) != 'oauth' || $this->hitobito_user === false)
+			{
+				// authentication failed
+				$response->status        = Authentication::STATUS_FAILURE;
+				$response->error_message = Text::_('PLG_SYSTEM_HITOBITOAUTH_AUTH_USERNOTFOUND');
+
+				return false;
+			}
+			elseif(Factory::getApplication()->input->get('state',null) == 'oauth' && $this->hitobito_user === true)
+			{
+				// authentification successful, joomla user dont exist
+				// hitobito_id was not found in #__users params row
+				$params = '{"admin_style":"","admin_language":"","language":"","editor":"","timezone":"","hitobito_id":'.$this->credentials['id'].'}';
+
+				// create response
+				$response->status        = Authentication::STATUS_SUCCESS;
+				$response->username      = $this->credentials['email'];
+				$response->email         = $this->credentials['email'];
+				$response->fullname      = $this->credentials['first_name'].' '.$this->credentials['last_name'];
+				$response->params        = $params;
+				$response->error_message = '';
+
+				return true;
+			}
+			else
+			{
+				// authentification successful, joomla user exists
+				// hitobito_id was found in #__users params row
+
+				// update username
+				$this->hitobito_user->name = $this->credentials['first_name'].' '.$this->credentials['last_name'];
+
+				// create response
+				$response->status        = Authentication::STATUS_SUCCESS;
+				$response->username      = $this->hitobito_user->username;
+				$response->email         = $this->hitobito_user->email;
+				$response->fullname      = $this->hitobito_user->name;
+				$response->params        = $this->hitobito_user->params;
+				$response->error_message = '';
+
+				return true;
+			}
+		}
+	}
 
 	/**
 	 * Login authentication function for OAuth.
@@ -303,25 +343,21 @@ class PlgSystemHitobitoauth extends JPlugin
 	 * validation.  Successful validation will update the current session with
 	 * the user details.
 	 *
-	 * @param   array    $options    Array('action' => core.login.site)
-	 * @param   object   $response   Object with ??
+	 * @param   array           $options    Array('action' => core.login.site)
+	 * @param   JAuthResponse   $response   Object with user info
+	 * 
+	 * @return  bool     True on success, false otherwise	 * 
 	 */
-	protected function login($options,$response)
+	protected function login($options, $response)
 	{
-		//$response = new stdClass();
-		//$this->onUserAuthenticate($this->hitobito_user,$options,$response);
+		PluginHelper::importPlugin('user');
 
-		if($response->status == JAuthentication::STATUS_SUCCESS)
+		if($response->status == Authentication::STATUS_SUCCESS && !$this->error)
 		{
-			PluginHelper::importPlugin('user');
-			// OK, the credentials are authenticated and user is authorised.  Let's fire the onLogin event.
 			$app = Factory::getApplication();
-			$response->password_clear = UserHelper::genRandomPassword();
+			//$response->password_clear = UserHelper::genRandomPassword();
 
-			if($this->params->get('registrationallowed',true) && $this->hitobito_user === true)
-			{
-				$options['autoregister'] = true;
-			}
+			// OK, the credentials are authenticated and user is authorised.  Let's fire the onLogin event.
 			$results = $app->triggerEvent('onUserLogin', array((array) $response, $options));
 
 			/*
@@ -347,9 +383,24 @@ class PlgSystemHitobitoauth extends JPlugin
 				Factory::getApplication()->triggerEvent('onUserAfterLogin', array($options));
 			}
 
-			Factory::getApplication()->enqueueMessage('Hitobito user "'.$response->fullname.'" successfully signed in.', 'message');
+			Factory::getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname), 'message');
 
 			return true;
+		}
+
+		// Trigger onUserLoginFailure Event.
+		Factory::getApplication()->triggerEvent('onUserLoginFailure', array((array) $response));
+
+		// If silent is set, just return false.
+		if (isset($options['silent']) && $options['silent'])
+		{
+			return false;
+		}
+
+		// If status is success, any error will have been raised by the user plugin
+		if ($response->status !== Authentication::STATUS_SUCCESS)
+		{
+			Factory::getApplication()->enqueueMessage($response->error_message, 'warning');
 		}
 
 		return false;
@@ -358,9 +409,9 @@ class PlgSystemHitobitoauth extends JPlugin
 	/**
 	 *  Search for Joomla user by hitobito-id.
 	 * 
-	 * @return  JUser object on success, true if no Joomla user found, false if no Hitobito user
+	 * @param   integer      $hitobito_id   User id fetched from OAuth response
 	 * 
-	 * @param   integer       $hitobito_id
+	 * @return  JUser|bool   object on success, true if no Joomla user found, false if no Hitobito user	 * 
 	 */
 	protected function getUserByHitobitoID($hitobito_id)
 	{
@@ -396,5 +447,134 @@ class PlgSystemHitobitoauth extends JPlugin
 		}
 
 		return Factory::getUser($id);
+	}
+
+	/**
+	 *  Method to create a new CMS user based on hitobito data
+	 * 
+	 * @param   JAuthResponse   $response   Authentication response object
+	 * 
+	 * @return  void
+	 */
+	protected function registerUser($response)
+	{
+		// user object
+		$instance = User::getInstance();
+		
+		// Get usergroups based on hitobito roles
+		$usergroups = $this->getUsergroups();		
+
+		// fill user object
+		$instance->id             = 0;
+		$instance->name           = $response->fullname;
+		$instance->username       = $response->username;
+		$instance->password_clear = UserHelper::genRandomPassword();
+		$instance->email          = $response->email;
+		$instance->groups         = $usergroups;
+		$instance->params         = $instance->setParam('hitobito_id', $this->credentials['id']);
+
+		// save user
+		if (!$instance->save())
+		{
+			Factory::getApplication()->enqueueMessage('Error in autoregistration for user: ' . $response->username, 'error');
+			JLog::add('Error in autoregistration for user: ' . $response->username . '.', JLog::WARNING, 'error');
+		}
+	}
+
+	/**
+	 *  Method to update a CMS user based on hitobito data
+	 * 
+	 * @return  void
+	 */
+	protected function updateUser()
+	{
+		// update user object
+		$this->hitobito_user->name   = $this->credentials['first_name'].' '.$this->credentials['last_name'];
+		$this->hitobito_user->groups = $this->getUsergroups();
+		$this->hitobito_user->setParam('hitobito_id', $this->credentials['id']);
+
+		// save user
+		if (!$this->hitobito_user->save(true))
+		{
+			Factory::getApplication()->enqueueMessage('Error in updating user data: ' . $this->hitobito_user->username, 'error');
+			JLog::add('Error in updating user data: ' . $this->hitobito_user->username . '.', JLog::WARNING, 'error');
+		}
+	}
+
+	/**
+	 *  Get roles of this user based on a Hitobito group.
+	 * 
+	 * @param   integer   $group_id   ID of the Hitobito group id to be used
+	 * 
+	 * @return  array     Array with available roles of this user	 * 
+	 */
+	protected function getRolesOfGroup($group_id)
+	{
+		$group_roles = array();
+
+		foreach ($this->credentials['roles'] as $key => $role)
+		{
+			if($role['group_id'] == $group_id)
+			{
+				array_push($group_roles, $role['role_name']);
+			}
+		}
+
+		return $group_roles;
+	}
+
+	/**
+	 *  Get CMS usergroups based on Hitobito roles
+	 * 
+	 * @return  array     Array with associated usergroups	 * 
+	 */
+	protected function getUsergroups()
+	{
+		if($this->params->get('groupmapping', false) == false || empty($this->params->get('groupmapping', false)))
+		{
+			// Use default usergroup
+			$usergroups = array(intval($this->params->get('cms_group_default', 0)));
+		}
+		else
+		{
+			// Perform mapping
+			$usergroups = array();
+			foreach ($this->params->get('groupmapping', false) as $key => $map)
+			{
+				if(in_array($map->hitobito_group, $this->roles))
+				{
+					if($this->checkSU($map->cms_group))
+					{
+						// try to map super user group
+						Factory::getApplication()->enqueueMessage(Text::_('PLG_SYSTEM_HITOBITOAUTH_SU_ERROR'), 'error');
+						$this->error = true;
+					}
+					else
+					{
+						array_push($usergroups, $map->cms_group);
+					}
+				}
+			}
+
+			if(count($usergroups) == 0)
+			{
+				// Use default usergroup if no matches in mapping
+				$usergroups = array(intval($this->params->get('cms_group_default', 0)));
+			}
+		}
+
+		return $usergroups;
+	}
+
+	/**
+	 *  Checks if usergroup is super user
+	 * 
+	 * @param   integer   $group_id   ID of the user group to be checked
+	 * 
+	 * @return  bool   True if it is super admin, false otherwise
+	 */
+	protected function checkSU($group_id)
+	{
+		return Access::checkGroup($group_id, 'core.admin');
 	}
 }

@@ -2,7 +2,7 @@
 <extension version="3.1" type="plugin" group="system" method="upgrade">
 	<name>plg_system_hitobitoauth</name>
 	<author>Schlumpf</author>
-	<creationDate>October 2021</creationDate>
+	<creationDate>April 2022</creationDate>
 	<license>GNU General Public License version 2 or later; see LICENSE.txt</license>
 	<authorEmail>tech.spuur@quickline.com</authorEmail>
 	<authorUrl>https://tech.spuur.ch</authorUrl>
@@ -10,7 +10,8 @@
 	<description>PLG_SYSTEM_HITOBITOAUTH_XML_DESCRIPTION</description>
 	<files>
 		<filename plugin="hitobitoauth">hitobitoauth.php</filename>
-		<filename>index.html</filename>
+		<filename>user-form.xml</filename>
+		<folder>fields</folder>
 		<folder>language</folder>
 	</files>
 	<languages folder="language">
@@ -20,8 +21,13 @@
 		<language tag="de-DE">de-DE/de-DE.plg_system_hitobitoauth.sys.ini</language>
 	</languages>
 	<config>
-		<fields name="params">
-			<fieldset name="basic">
+		<fields name="params" addfieldpath="/plugins/system/hitobitoauth/fields">
+			<fieldset name="basic" >
+				<field
+					name="title_api"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_APITITLE_LABEL"
+				/>
 				<field
 					type="url"
 					name="redirecturi"
@@ -58,10 +64,82 @@
 					label="PLG_SYSTEM_HITOBITOAUTH_APINOTE_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_APINOTE_DESC"
 				/>
+			</fieldset>
+			<fieldset name="mapping">
 				<field
-					type="spacer"
-					name="spacer"
-					hr="true"
+					name="title_userdata"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_USERDATA_LABEL"
+				/>
+				<field
+					name="registrationallowed"
+					type="radio"
+					label="PLG_SYSTEM_HITOBITOAUTH_AUTOREGISTER_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_AUTOREGISTER_DESC"
+					class="btn-group btn-group-yesno"
+					default="1"
+				>
+					<option value="1">JYES</option>
+					<option value="0">JNO</option>
+				</field>
+				<field
+					name="updateallowed"
+					type="radio"
+					label="PLG_SYSTEM_HITOBITOAUTH_AUTOUPDATE_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_AUTOUPDATE_DESC"
+					class="btn-group btn-group-yesno"
+					default="1"
+				>
+					<option value="1">JYES</option>
+					<option value="0">JNO</option>
+				</field>
+				<field
+					name="title_apitoken"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_APITOKEN_LABEL"
+				/>
+				<field
+					type="text"
+					name="hitobito_grouptoken"
+					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPTOKEN_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPTOKEN_DESC"
+				/>
+				<field
+					name="btn_mapping"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_MAPPINGBUTTON_LABEL"
+				/>
+				<field
+					name="title_mapping"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_MAPPINGTITLE_LABEL"
+				/>
+				<field
+					type="text"
+					name="hitobito_groupid"
+					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_DESC"
+				/>
+				<field name="cms_group_default"
+					type="usergroup"
+					default="0"
+					label="PLG_SYSTEM_HITOBITOAUTH_DEFAULT_GROUP_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_DEFAULT_GROUP_DESC"
+				/>
+				<field name="groupmapping"
+					type="subform"
+					formsource="plugins/system/hitobitoauth/forms/subform_mapping.xml"
+					multiple="true"
+					label="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_DESC"
+				/>
+				<field name="js" type="jsgroups" />
+			</fieldset>
+			<fieldset name="design">
+				<field
+					name="title_button"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_BUTTONTITLE_LABEL"
 				/>
 				<field
 					type="text"
@@ -86,22 +164,6 @@
 					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOCOLOR_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOCOLOR_DESC"
 				/>
-				<field
-					type="spacer"
-					name="spacer"
-					hr="true"
-				/>
-				<field
-					name="registrationallowed"
-					type="radio"
-					label="PLG_SYSTEM_HITOBITOAUTH_AUTOREGISTER_LABEL"
-					description="PLG_SYSTEM_HITOBITOAUTH_AUTOREGISTER_DESC"
-					class="btn-group btn-group-yesno"
-					default="1"
-				>
-					<option value="1">JYES</option>
-					<option value="0">JNO</option>
-				</field>
 			</fieldset>
 		</fields>
 	</config>
