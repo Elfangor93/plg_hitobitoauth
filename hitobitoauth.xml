@@ -10,8 +10,8 @@
 	<description>PLG_SYSTEM_HITOBITOAUTH_XML_DESCRIPTION</description>
 	<files>
 		<filename plugin="hitobitoauth">hitobitoauth.php</filename>
-		<filename>user-form.xml</filename>
 		<folder>fields</folder>
+		<folder>forms</folder>
 		<folder>language</folder>
 	</files>
 	<languages folder="language">
