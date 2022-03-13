@@ -1,2 +1,2 @@
 # plg_hitobito_oauth
- Authetification using OAuth2 of Hitobito
+ Joomla 3.x Plugin: Authetification using OAuth2 of Hitobito
