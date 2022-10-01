@@ -174,7 +174,9 @@ class PlgSystemHitobitoauth extends JPlugin
 				Factory::getApplication()->setUserState('hitobitauth.client', Factory::getApplication()->input->get('from',null));
 			}
 
-			$oauth_client = new JOAuth2Client();
+			JLoader::register('JOAuth2ClientCustom', JPATH_PLUGINS.'/system/hitobitoauth/src/client.php');
+
+			$oauth_client = new JOAuth2ClientCustom();
 			$oauth_client->setOption('sendheaders',true);
 			$oauth_client->setOption('client_id','token');
 			$oauth_client->setOption('scope',array('with_roles'));
