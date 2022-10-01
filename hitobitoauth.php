@@ -113,6 +113,7 @@ class PlgSystemHitobitoauth extends JPlugin
 	public function __construct(&$subject, $config)
 	{
 		parent::__construct($subject, $config);
+
 		if( !$this->params->get('clientid',false)
 			||
 			!$this->params->get('clientsecret',false)
@@ -134,12 +135,44 @@ class PlgSystemHitobitoauth extends JPlugin
 	 */
 	public function onAfterRoute()
 	{
+		$tmp1 = Factory::getApplication()->input->get('from', null);
+		$tmp2 = Factory::getApplication()->input->get('oauth', null);
+		$tmp3 = Factory::getApplication()->getUserState('hitobitauth.client', null);
+
+		if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
+		   Factory::getApplication()->input->get('oauth',null) == 'success')
+		{
+			// Successful authetication in frontend
+			$script  = 'if (window.opener != null && !window.opener.closed) {';
+			$script .=     'window.opener.location.reload();';
+			$script .= '}';
+			$script .= 'window.close();';
+			
+			echo '<script>'.$script.'</script>';
+			Factory::getApplication()->setUserState('hitobitauth.client', null);
+		}
+
+		if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'administrator' &&
+		   Factory::getApplication()->input->get('oauth',null) == 'success')
+		{
+			// Successful authetication in backend
+			echo Text::_('PLG_SYSTEM_HITOBITOAUTH_CHECK_CREDITS_SUCCESS');
+			Factory::getApplication()->setUserState('hitobitauth.client', null);
+			die;
+		}
+
 		if((Factory::getApplication()->input->get('task',null)=='oauth' && 
 		Factory::getApplication()->input->get('app',null)=='hitobito') ||
 		Factory::getApplication()->input->get('state',null)=='oauth' &&
 		Factory::getApplication()->input->get('code',null) != null)
 		{
+			// Start OAuth authetication
 			jimport('joomla.oauth2.client');
+
+			if(Factory::getApplication()->input->get('from',null) !== null)
+			{
+				Factory::getApplication()->setUserState('hitobitauth.client', Factory::getApplication()->input->get('from',null));
+			}
 
 			$oauth_client = new JOAuth2Client();
 			$oauth_client->setOption('sendheaders',true);
@@ -148,7 +181,7 @@ class PlgSystemHitobitoauth extends JPlugin
 			$oauth_client->setOption('requestparams',array('state'=>'oauth','task'=>Factory::getApplication()->input->get('task',null),'access_type'=>'offline'));
 			$oauth_client->setOption('clientid',$this->params->get('clientid',false));
 			$oauth_client->setOption('clientsecret',$this->params->get('clientsecret',false));
-			$oauth_client->setOption('redirecturi',$this->params->get('redirecturi',false));
+			$oauth_client->setOption('redirecturi',JUri::root());
 			$oauth_client->setOption('authurl',$this->params->get('clienthost','https://demo.hitobito.com').'/oauth/authorize');
 			$oauth_client->setOption('tokenurl',$this->params->get('clienthost','https://demo.hitobito.com').'/oauth/token');
 			$oauth_client->authenticate();
@@ -157,6 +190,13 @@ class PlgSystemHitobitoauth extends JPlugin
 
 			if($oauth_client->isAuthenticated())
 			{
+				if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'administrator')
+				{
+					// Checking credetials in administrator
+					Factory::getApplication()->redirect(Route::_('index.php?oauth=success'));
+					return;
+				}
+
 				// Fetch authenticated user info
 				$opts = array(
 				'http'=>array(
@@ -202,7 +242,7 @@ class PlgSystemHitobitoauth extends JPlugin
 				$this->login($options, $response);
 
 				// if not redirected on onAfterLogin just go to front page //
-				Factory::getApplication()->redirect(Route::_('index.php'));
+				Factory::getApplication()->redirect(Route::_('index.php?oauth=success'));
 			}
 		}
 	}
@@ -219,21 +259,25 @@ class PlgSystemHitobitoauth extends JPlugin
 			$doc = Factory::getApplication()->getDocument();
 
 			// script for button click
-			$script = 'let getOAuthToken = function(element){
-				window.open("'. Uri::root().'?task=oauth&app=hitobito&state=unknown","_self");
-                /*var winl = ( screen.width - 400 ) / 2;
-                var wint = ( screen.height - 800 ) / 2;
-                var winprops = "height=600,width=600,top=wint,left=winl,scrollbars=1,resizable";
-                var myWindow = window.open("'. Uri::root().'?task=oauth&app=hitobito", "Hitobito OAuth2", winprops);*/
-			};';
+			$script   = '';
+			$path = JPath::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/oauth.js.php');
+
+			ob_start();
+			include $path;
+			$script .= ob_get_contents();
+			ob_end_clean();
 			$doc->addScriptDeclaration($script);
 
 			// css button
-			$css = '.btn-hitobito,.btn-hitobito:hover,.btn-hitobito:active,.btn-hitobito:focus {margin-left: 5px; background-color: '.$this->params->get('hitobito_bgcolor','#99bf62').'; color: '.$this->params->get('hitobito_color','#fff').'; background-image: linear-gradient(to bottom,'.$this->params->get('hitobito_bgcolor','#99bf62').','.$this->params->get('hitobito_bgcolor','#99bf62').'); text-shadow: initial;}';
+			$css = '.btn-hitobito,.btn-hitobito:hover,.btn-hitobito:active,.btn-hitobito:focus {margin-bottom: 20px; background-color: '.$this->params->get('hitobito_bgcolor','#99bf62').'; color: '.$this->params->get('hitobito_color','#fff').'; background-image: linear-gradient(to bottom,'.$this->params->get('hitobito_bgcolor','#99bf62').','.$this->params->get('hitobito_bgcolor','#99bf62').'); text-shadow: initial;}';
 			$doc->addStyleDeclaration($css);
 
+			// logo
+			$default = JUri::root().'plugins/system/hitobitoauth/images/hitobito_logo.png';
+			$logo = '<span><img src="'.$this->params->get('hitobito_logo', $default).'" alt="Hitobito Logo" width="20" height="15"></span> ';
+
 			// html button
-			$html = '<a id="hitobito_btn" class="btn btn-hitobito" href="#" onclick="getOAuthToken(this)">'.$this->params->get('hitobito_name','Hitobito').'</a>';
+			$html = '<hr /><a id="hitobito_btn" class="btn btn-hitobito" href="#" onclick="getOAuthToken(this, \'site\')">'.$logo.Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_LOGIN_WITH', $this->params->get('hitobito_name','Hitobito')).'</a>';
 			$html = addcslashes($html,"'\"");
 
 			// add button

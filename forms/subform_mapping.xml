@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<form>
+<form> 
     <fieldset>
         <field name="hitobito_group"
             type="text"
+            groupByFieldset="false"
             label="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_HITOBITO_LABEL"
             description="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_HITOBITO_DESC" />
         <field name="cms_group"
             type="usergroup"
+            groupByFieldset="false"
             label="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_CMS_LABEL"
             description="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_CMS_DESC" />
     </fieldset>

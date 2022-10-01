@@ -13,6 +13,8 @@
 		<folder>fields</folder>
 		<folder>forms</folder>
 		<folder>language</folder>
+		<folder>layouts</folder>
+		<folder>images</folder>
 	</files>
 	<languages folder="language">
 		<language tag="en-GB">en-GB/en-GB.plg_system_hitobitoauth.ini</language>
@@ -29,11 +31,10 @@
 					label="PLG_SYSTEM_HITOBITOAUTH_APITITLE_LABEL"
 				/>
 				<field
-					type="url"
+					type="HostUrlField"
 					name="redirecturi"
 					label="PLG_SYSTEM_HITOBITOAUTH_REDIRECTURI_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_REDIRECTURI_DESC"
-					default="http://localhost/joomla3/"
 					readonly="true"
 				/>
 				<field
@@ -59,13 +60,62 @@
 					required="true"
 				/>
 				<field
+					name="btn-test"
+					type="jscheckcredits"
+					label="PLG_SYSTEM_HITOBITOAUTH_APICRED_BTN"
+				/>
+				<field
 					name="note_api"
 					type="note"
 					label="PLG_SYSTEM_HITOBITOAUTH_APINOTE_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_APINOTE_DESC"
 				/>
+				<field
+					name="oauth_img"
+					type="popupimage"
+					label="oauth_application_edit.jpg"
+				/>
 			</fieldset>
 			<fieldset name="mapping">
+				<field
+					name="title_apitoken"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_APITOKEN_LABEL"
+				/>
+				<field
+					type="text"
+					name="hitobito_groupid"
+					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_DESC"
+				/>
+				<field
+					type="text"
+					name="hitobito_grouptoken"
+					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPTOKEN_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPTOKEN_DESC"
+				/>
+				<field
+					name="btn_mapping"
+					type="jsgroups"
+					label="PLG_SYSTEM_HITOBITOAUTH_MAPPINGBUTTON_LABEL"
+				/>
+				<field
+					name="note_groupid"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_GROUPIDNOTE_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_GROUPIDNOTE_DESC"
+				/>
+				<field
+					name="note_apitoken"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_APITOKENNOTE_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_APITOKENNOTE_DESC"
+				/>
+				<field
+					name="apitoken_img"
+					type="popupimage"
+					label="usergroup_api_token_edit.jpg"
+				/>
 				<field
 					name="title_userdata"
 					type="note"
@@ -94,52 +144,38 @@
 					<option value="0">JNO</option>
 				</field>
 				<field
-					name="title_apitoken"
-					type="note"
-					label="PLG_SYSTEM_HITOBITOAUTH_APITOKEN_LABEL"
-				/>
-				<field
-					type="text"
-					name="hitobito_grouptoken"
-					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPTOKEN_LABEL"
-					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPTOKEN_DESC"
-				/>
-				<field
-					name="btn_mapping"
-					type="note"
-					label="PLG_SYSTEM_HITOBITOAUTH_MAPPINGBUTTON_LABEL"
-				/>
-				<field
 					name="title_mapping"
 					type="note"
 					label="PLG_SYSTEM_HITOBITOAUTH_MAPPINGTITLE_LABEL"
 				/>
 				<field
-					type="text"
-					name="hitobito_groupid"
-					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_LABEL"
-					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_DESC"
-				/>
-				<field name="cms_group_default"
+					name="cms_group_default"
 					type="usergroup"
 					default="9"
 					label="PLG_SYSTEM_HITOBITOAUTH_DEFAULT_GROUP_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_DEFAULT_GROUP_DESC"
 				/>
-				<field name="groupmapping"
+				<field
+					name="groupmapping"
 					type="subform"
+					layout="joomla.form.field.subform.repeatable-table"
 					formsource="plugins/system/hitobitoauth/forms/subform_mapping.xml"
 					multiple="true"
 					label="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_DESC"
 				/>
-				<field name="js" type="jsgroups" />
 			</fieldset>
 			<fieldset name="design">
 				<field
 					name="title_button"
 					type="note"
 					label="PLG_SYSTEM_HITOBITOAUTH_BUTTONTITLE_LABEL"
+				/>
+				<field
+					type="media"
+					name="hitobito_logo"
+					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOLOGO_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOLOGO_DESC"
 				/>
 				<field
 					type="text"

@@ -12,11 +12,10 @@ defined('_JEXEC') or die();
 
 use \Joomla\CMS\Factory;
 use \Joomla\CMS\Form\FormField;
-use \Joomla\CMS\Form\Field\RadioField;
 use \Joomla\CMS\Language\Text;
 use \Joomla\CMS\Filesystem\Path as JPath;
 
-class JFormFieldJsGroups extends FormField
+class JFormFieldPopupImage extends FormField
 {
     /**
 	 * The form field type.
@@ -24,7 +23,7 @@ class JFormFieldJsGroups extends FormField
 	 * @var    string
 	 * @since  1.7.0
 	 */
-	protected $type = 'JsGroups';
+	protected $type = 'PopupImage';
 
     /**
 	 * Hide the label when rendering the form field.
@@ -44,10 +43,8 @@ class JFormFieldJsGroups extends FormField
 
     protected function getLabel()
     {
-		$css = '.form-horizontal .control-label {width: 300px;}';
-		Factory::getApplication()->getDocument()->addStyleDeclaration($css);
-
-		return '<button class="btn" onclick="getGroups(event)">'.Text::_($this->element['label']).'</button>';
+		$path = JUri::root().'plugins/system/hitobitoauth/images/'.$this->element['label'];
+		return Text::_('PLG_SYSTEM_HITOBITOAUTH_EXAMPLE_IMAGE').': <a href="#" onclick="popupImage(\''.$path.'\')">'.Text::_('PLG_SYSTEM_HITOBITOAUTH_SHOW_IMAGE').'</a>';
 	}
 
     /**
@@ -59,14 +56,11 @@ class JFormFieldJsGroups extends FormField
      */
     protected function getInput()
     {
-        $js   = '';
-        $path = JPath::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/usergroups.js.php');
+        $js  = 'var popupImage = function(url) {';
+    	$js .= 		'let winprops = "height=400,width=600,top=100,left=100,scrollbars=1,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,directories=no,status=no";';
+    	$js .=      'let popupWin = window.open(url, "'.Text::_('PLG_SYSTEM_HITOBITOAUTH_EXAMPLE_IMAGE').'", winprops);';
+		$js .= '};';
 
-        ob_start();
-		include $path;
-		$js .= ob_get_contents();
-		ob_end_clean();
-
-        return  $js;
+        return  '<script>'.$js.'</script>';
     }
 }
