@@ -14,7 +14,7 @@ namespace Schlumpf\Plugin\System\Hitobitoauth\Extension;
 use \Joomla\Event\DispatcherInterface;
 use \Joomla\Event\SubscriberInterface;
 use \Joomla\CMS\Plugin\CMSPlugin;
-use Joomla\Event\Event;
+use \Joomla\Event\Event;
 
 use \Joomla\CMS\Factory;
 use \Joomla\CMS\User\User;
@@ -29,9 +29,12 @@ use \Joomla\CMS\Cache\Cache;
 use \Joomla\CMS\Uri\Uri;
 use \Joomla\CMS\Filesystem\Path;
 use \Joomla\CMS\Form\Form;
+use \Joomla\CMS\Log\Log;
 use \Joomla\Registry\Registry;
+use \Joomla\Http\HttpFactory;
+use \Schlumpf\Plugin\System\Hitobitoauth\Oauth\Customclient as OAuth2ClientCustom;
 use \Joomla\CMS\Authentication\Authentication;
-use \Joomla\CMS\Authentication\AuthenticationResponse as JAuthResponse; 
+use \Joomla\CMS\Authentication\AuthenticationResponse as AuthResponse;
 
 /**
  * Hitobito OAuth2 Login plugin
@@ -95,7 +98,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	/**
 	 * User credentials from hitobito
 	 *
-	 * @var    JUser object
+	 * @var    User object
 	 * @since  1.0.0
 	 */
 	protected $hitobito_user = false;
@@ -181,11 +184,19 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 */
 	public function onAfterRoute()
 	{
-		$state = Factory::getApplication()->getUserState('hitobitauth.state', null);
+		// This feature only applies in the site and administrator applications
+        if( !$this->getApplication()->isClient('site') &&
+			!$this->getApplication()->isClient('administrator')
+          )
+		{
+            return;
+        }
 
- 		if(Factory::getApplication()->getUserState('hitobitauth.state', null) === true &&
-		   Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
-		   Factory::getApplication()->input->get('oauth',null) == 'success')
+		$state = $this->getApplication()->getUserState('hitobitauth.state', null);
+
+ 		if($this->getApplication()->getUserState('hitobitauth.state', null) === true &&
+		   $this->getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
+		   $this->getApplication()->input->get('oauth',null) == 'success')
 		{
 			// Successful authetication in frontend
 			$script  = 'if (window.opener != null && !window.opener.closed) {';
@@ -193,48 +204,48 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			$script .= '}';
 			$script .= 'window.close();';
 
-			Factory::getApplication()->setUserState('hitobitauth.state', false);
+			$this->getApplication()->setUserState('hitobitauth.state', false);
 			
 			echo '<script>'.$script.'</script>';
 
 			return;
 		}
 
-		if(Factory::getApplication()->getUserState('hitobitauth.state', null) === true &&
-		   Factory::getApplication()->getUserState('hitobitauth.client', null) == 'administrator' &&
-		   Factory::getApplication()->input->get('oauth',null) == 'success')
+		if($this->getApplication()->getUserState('hitobitauth.state', null) === true &&
+		   $this->getApplication()->getUserState('hitobitauth.client', null) == 'administrator' &&
+		   $this->getApplication()->input->get('oauth',null) == 'success')
 		{
 			// Successful authetication in backend
 			echo Text::_('PLG_SYSTEM_HITOBITOAUTH_CHECK_CREDITS_SUCCESS');
 
-			Factory::getApplication()->setUserState('hitobitauth.state', false);
+			$this->getApplication()->setUserState('hitobitauth.state', false);
 			die;
 		}
 
-		if((Factory::getApplication()->input->get('task',null)=='oauth' && 
-		Factory::getApplication()->input->get('app',null)=='hitobito') ||
-		Factory::getApplication()->input->get('state',null)=='oauth' &&
-		Factory::getApplication()->input->get('code',null) != null)
+		if(($this->getApplication()->input->get('task',null)=='oauth' && 
+			$this->getApplication()->input->get('app',null)=='hitobito') ||
+			$this->getApplication()->input->get('state',null)=='oauth' &&
+			$this->getApplication()->input->get('code',null) != null)
 		{
 			// Start OAuth authetication process
-			jimport('joomla.oauth2.client');
-			Factory::getApplication()->setUserState('hitobitauth.state', true);
+			$this->getApplication()->setUserState('hitobitauth.state', true);
 
-			if(Factory::getApplication()->input->get('from',null) !== null)
+			if($this->getApplication()->input->get('from',null) !== null)
 			{
-				Factory::getApplication()->setUserState('hitobitauth.client', Factory::getApplication()->input->get('from',null));
+				$this->getApplication()->setUserState('hitobitauth.client', $this->getApplication()->input->get('from',null));
 			}
 
-			JLoader::register('JOAuth2ClientCustom', JPATH_PLUGINS.'/system/hitobitoauth/src/client.php');
+			$http  = (new HttpFactory())->getHttp(array());
+			$input = $this->getApplication()->getInput();
 
-			$oauth_client = new JOAuth2ClientCustom();
+			$oauth_client = new OAuth2ClientCustom(array(), $http, $input, $this->getApplication());
 			$oauth_client->setOption('sendheaders',true);
 			$oauth_client->setOption('client_id','token');
 			$oauth_client->setOption('scope',array('with_roles'));
-			$oauth_client->setOption('requestparams',array('state'=>'oauth','task'=>Factory::getApplication()->input->get('task',null),'access_type'=>'offline'));
+			$oauth_client->setOption('requestparams',array('state'=>'oauth','task'=>$this->getApplication()->input->get('task',null),'access_type'=>'offline'));
 			$oauth_client->setOption('clientid',$this->params->get('clientid',false));
 			$oauth_client->setOption('clientsecret',$this->params->get('clientsecret',false));
-			$oauth_client->setOption('redirecturi',JUri::root());
+			$oauth_client->setOption('redirecturi',Uri::root());
 			$oauth_client->setOption('authurl',$this->params->get('clienthost','https://demo.hitobito.com').'/oauth/authorize');
 			$oauth_client->setOption('tokenurl',$this->params->get('clienthost','https://demo.hitobito.com').'/oauth/token');
 			$oauth_client->authenticate();
@@ -243,10 +254,10 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 			if($oauth_client->isAuthenticated())
 			{
-				if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'administrator')
+				if($this->getApplication()->getUserState('hitobitauth.client', null) == 'administrator')
 				{
 					// Checking credetials in administrator
-					Factory::getApplication()->redirect(Route::_('index.php?oauth=success'));
+					$this->getApplication()->redirect(Route::_('index.php?oauth=success'));
 					return;
 				}
 
@@ -259,11 +270,11 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 							"Accept-Language: de\r\n"
 				)
 				);
-				$context = stream_context_create($opts);
-				$file = file_get_contents($this->params->get('clienthost','https://demo.hitobito.com').'/oauth/profile', false, $context);
+				$context = \stream_context_create($opts);
+				$file = \file_get_contents($this->params->get('clienthost','https://demo.hitobito.com').'/oauth/profile', false, $context);
 
 				// Safe user info to credentials
-				$this->credentials = json_decode($file, true);
+				$this->credentials = \json_decode($file, true);
 
 				// Get roles of user based on group
 				$this->roles = $this->getRolesOfGroup($this->params->get('hitobito_groupid', 0));
@@ -272,7 +283,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				$this->hitobito_user = $this->getUserByHitobitoID($this->credentials['id']);
 
 				// Authenticate hitobito user
-				$response = new JAuthResponse();
+				$response = new AuthResponse();
 				$options  = array();
 				$this->onUserAuthenticate($options, $response);
 
@@ -290,24 +301,24 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 					$this->updateUser();
 				}
 
-				$options = array('action' => 'core.login.'.(Factory::getApplication()->isSite()?'site':'admin'),
+				$options = array('action' => 'core.login.'.($this->getApplication()->isClient('site')?'site':'admin'),
 								'autoregister' => false);
 				
 				$this->login($options, $response);
 
 				// if not redirected on onAfterLogin just go to front page //
-				Factory::getApplication()->redirect(Route::_('index.php?oauth=success'));
+				$this->getApplication()->redirect(Route::_('index.php?oauth=success'));
 			}
 		}
 
-		if(Factory::getApplication()->getUserState('hitobitauth.msg', null))
+		if($this->getApplication()->getUserState('hitobitauth.msg', null))
 		{
 			// Output messages from user state if available
-			$msg     = Factory::getApplication()->getUserState('hitobitauth.msg', null);
-			$msgType = Factory::getApplication()->getUserState('hitobitauth.msgType', 'message');
-			Factory::getApplication()->enqueueMessage($msg, $msgType);
+			$msg     = $this->getApplication()->getUserState('hitobitauth.msg', null);
+			$msgType = $this->getApplication()->getUserState('hitobitauth.msgType', 'message');
+			$this->getApplication()->enqueueMessage($msg, $msgType);
 
-			if(Factory::getApplication()->getUserState('hitobitauth.state', null) === false)
+			if($this->getApplication()->getUserState('hitobitauth.state', null) === false)
 			{
 				// End OAuth authetication process
 				$this->resetUserSate();
@@ -322,18 +333,18 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 */
 	public function onBeforeRender()
 	{
-		if(Factory::getApplication()->isClient('site'))
+		if($this->getApplication()->isClient('site'))
 		{
-			$doc = Factory::getApplication()->getDocument();
+			$doc = $this->getApplication()->getDocument();
 
 			// script for button click
 			$script   = '';
 			$path = Path::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/oauth.js.php');
 
-			ob_start();
+			\ob_start();
 			include $path;
-			$script .= ob_get_contents();
-			ob_end_clean();
+			$script .= \ob_get_contents();
+			\ob_end_clean();
 			$doc->addScriptDeclaration($script);
 
 			// css button
@@ -346,7 +357,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 			// html button
 			$html = '<hr /><a id="hitobito_btn" class="btn btn-hitobito w-100" href="#" onclick="getOAuthToken(this, \'site\')">'.$logo.Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_LOGIN_WITH', $this->params->get('hitobito_name','Hitobito')).'</a>';
-			$html = addcslashes($html,"'\"");
+			$html = \addcslashes($html,"'\"");
 
 			// add button
 			$script = 'jQuery(document).ready(function($){$(\'input[name="task"][value="user.login"], form[action*="task=user.login"] > :first-child\').closest(\'form\').find(\'input[type="submit"],button[type="submit"]\').after("'.$html.'");});';
@@ -374,16 +385,16 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 	    // Check we are manipulating a valid form
 	    $context = $form->getName();
-		if (!in_array($context, $this->allowedContext))
+		if (!\in_array($context, $this->allowedContext))
 		{
 			return;
 		}
 
 		// This feature only applies in the site and administrator applications
-        if (
-            !$this->getApplication()->isClient('site')
-            && !$this->getApplication()->isClient('administrator')
-        ) {
+        if( !$this->getApplication()->isClient('site') &&
+			!$this->getApplication()->isClient('administrator')
+          )
+		{
             return;
         }
 
@@ -397,22 +408,22 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 * Method to append the required information to the $response object.
 	 * 
 	 * @param   array           $options       Options array
-	 * @param   JAuthResponse   $response      Authentication response object
+	 * @param   AuthResponse    $response      Authentication response object
 	 * 
 	 * @return  bool            true on success, false otherwise
 	 */
 	public function onUserAuthenticate($options, &$response)
 	{
-		if(Factory::getApplication()->input->get('state',null)=='oauth' &&
-			Factory::getApplication()->input->get('code',null) != null)
+		if($this->getApplication()->input->get('state',null)=='oauth' &&
+			$this->getApplication()->input->get('code',null) != null)
 		{
 			$response->type = 'JOAuth';
 
-			if(Factory::getApplication()->input->get('state',null) != 'oauth' || $this->hitobito_user === false
-				|| ($this->params->get('grouprestriction', false) && !in_array($this->params->get('hitobito_groupid', 0), $this->groups)))
+			if($this->getApplication()->input->get('state',null) != 'oauth' || $this->hitobito_user === false
+				|| ($this->params->get('grouprestriction', false) && !\in_array($this->params->get('hitobito_groupid', 0), $this->groups)))
 			{
 				// authentication failed
-				$response->status        = Authentication::STATUS_FAILURE;
+				$response->status = Authentication::STATUS_FAILURE;
 
 				if($this->hitobito_user === false)
 				{
@@ -427,7 +438,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 				return false;
 			}
-			elseif(Factory::getApplication()->input->get('state',null) == 'oauth' && $this->hitobito_user === true)
+			elseif($this->getApplication()->input->get('state',null) == 'oauth' && $this->hitobito_user === true)
 			{
 				// authentification successful, joomla user dont exist
 				// hitobito_id was not found in #__users params row
@@ -477,7 +488,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 * the user details.
 	 *
 	 * @param   array           $options    Array('action' => core.login.site)
-	 * @param   JAuthResponse   $response   Object with user info
+	 * @param   AuthResponse    $response   Object with user info
 	 * 
 	 * @return  bool     True on success, false otherwise	 * 
 	 */
@@ -487,7 +498,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 		if($response->status === Authentication::STATUS_SUCCESS && !$this->error)
 		{
-			$app = Factory::getApplication();
+			$app = $this->getApplication();
 			//$response->password_clear = UserHelper::genRandomPassword();
 
 			// OK, the credentials are authenticated and user is authorised.  Let's fire the onLogin event.
@@ -507,34 +518,34 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				$user->set('cookieLogin', true);
 			}
 
-			if (in_array(false, $results, true) == false)
+			if (\in_array(false, $results, true) == false)
 			{
 				// Login successful
 				$options['user'] = $user;
 				$options['responseType'] = $response->type;
 
 				// The user is successfully logged in. Run the after login events
-				Factory::getApplication()->triggerEvent('onUserAfterLogin', array($options));
+				$this->getApplication()->triggerEvent('onUserAfterLogin', array($options));
 			}
 			else
 			{
 				// Login failed
-				Factory::getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname), 'error');
-				Factory::getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname));
-				Factory::getApplication()->setUserState('hitobitauth.msgType', 'error');
+				$this->getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname), 'error');
+				$this->getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname));
+				$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
 
 				return false;
 			}
 
-			Factory::getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname), 'message');
-			Factory::getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname));
-			Factory::getApplication()->setUserState('hitobitauth.msgType', 'message');
+			$this->getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname), 'message');
+			$this->getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname));
+			$this->getApplication()->setUserState('hitobitauth.msgType', 'message');
 
 			return true;
 		}
 
 		// Trigger onUserLoginFailure Event.
-		Factory::getApplication()->triggerEvent('onUserLoginFailure', array((array) $response));
+		$this->getApplication()->triggerEvent('onUserLoginFailure', array((array) $response));
 
 		// If silent is set, just return false.
 		if (isset($options['silent']) && $options['silent'])
@@ -545,9 +556,9 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		// If status is success, any error will have been raised by the user plugin
 		if ($response->status !== Authentication::STATUS_SUCCESS)
 		{
-			Factory::getApplication()->enqueueMessage($response->error_message, 'error');
-			Factory::getApplication()->setUserState('hitobitauth.msg', $response->error_message);
-			Factory::getApplication()->setUserState('hitobitauth.msgType', 'error');
+			$this->getApplication()->enqueueMessage($response->error_message, 'error');
+			$this->getApplication()->setUserState('hitobitauth.msg', $response->error_message);
+			$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
 		}
 
 		return false;
@@ -558,7 +569,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 * 
 	 * @param   integer      $hitobito_id   User id fetched from OAuth response
 	 * 
-	 * @return  JUser|bool   object on success, true if no Joomla user found, false if no Hitobito user	 * 
+	 * @return  User|bool   object on success, true if no Joomla user found, false if no Hitobito user	 * 
 	 */
 	protected function getUserByHitobitoID($hitobito_id)
 	{
@@ -580,9 +591,9 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		$id = false;
 		foreach($users as $user)
 		{
-			$params = json_decode($user->params);
+			$params = \json_decode($user->params);
 
-			if( isset($params->hitobito_id) && intval($params->hitobito_id) === $hitobito_id)
+			if(isset($params->hitobito_id) && \intval($params->hitobito_id) === $hitobito_id)
 			{
 				$id = $user->id;
 			}
@@ -599,7 +610,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	/**
 	 *  Method to create a new CMS user based on hitobito data
 	 * 
-	 * @param   JAuthResponse   $response   Authentication response object
+	 * @param   AuthResponse   $response   Authentication response object
 	 * 
 	 * @return  void
 	 */
@@ -623,10 +634,10 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		// save user
 		if (!$instance->save())
 		{
-			Factory::getApplication()->enqueueMessage('Error in autoregistration for user: ' . $response->username, 'error');
-			JLog::add('Error in autoregistration for user: ' . $response->username . '.', JLog::WARNING, 'error');
-			Factory::getApplication()->setUserState('hitobitauth.msg', 'Error in autoregistration for user: ' . $response->username);
-			Factory::getApplication()->setUserState('hitobitauth.msgType', 'error');
+			$this->getApplication()->enqueueMessage('Error in autoregistration for user: ' . $response->username, 'error');
+			Log::add('Error in autoregistration for user: ' . $response->username . '.', Log::WARNING, 'error');
+			$this->getApplication()->setUserState('hitobitauth.msg', 'Error in autoregistration for user: ' . $response->username);
+			$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
 		}
 	}
 
@@ -645,10 +656,10 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		// save user
 		if (!$this->hitobito_user->save(true))
 		{
-			Factory::getApplication()->enqueueMessage('Error in updating user data: ' . $this->hitobito_user->username, 'error');
-			JLog::add('Error in updating user data: ' . $this->hitobito_user->username . '.', JLog::WARNING, 'error');
-			Factory::getApplication()->setUserState('hitobitauth.msg', 'Error in updating user data: ' . $this->hitobito_user->username);
-			Factory::getApplication()->setUserState('hitobitauth.msgType', 'error');
+			$this->getApplication()->enqueueMessage('Error in updating user data: ' . $this->hitobito_user->username, 'error');
+			Log::add('Error in updating user data: ' . $this->hitobito_user->username . '.', Log::WARNING, 'error');
+			$this->getApplication()->setUserState('hitobitauth.msg', 'Error in updating user data: ' . $this->hitobito_user->username);
+			$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
 		}
 	}
 
@@ -668,7 +679,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			if($role['group_id'] == $group_id)
 			{
 				//array_push($group_roles, $role['name']);
-				array_push($group_roles, $role['role_class']);
+				\array_push($group_roles, $role['role_class']);
 			}
 		}
 
@@ -685,7 +696,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		if($this->params->get('groupmapping', false) == false || empty($this->params->get('groupmapping', false)))
 		{
 			// Use default usergroup
-			$usergroups = array(intval($this->params->get('cms_group_default', 0)));
+			$usergroups = array(\intval($this->params->get('cms_group_default', 0)));
 		}
 		else
 		{
@@ -693,27 +704,27 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			$usergroups = array();
 			foreach ($this->params->get('groupmapping', false) as $key => $map)
 			{
-				if(in_array($map->hitobito_group, $this->roles))
+				if(\in_array($map->hitobito_group, $this->roles))
 				{
 					if($this->checkSU($map->cms_group))
 					{
 						// try to map super user group
-						Factory::getApplication()->enqueueMessage(Text::_('PLG_SYSTEM_HITOBITOAUTH_SU_ERROR'), 'error');
-						Factory::getApplication()->setUserState('hitobitauth.msg', Text::_('PLG_SYSTEM_HITOBITOAUTH_SU_ERROR'));
-						Factory::getApplication()->setUserState('hitobitauth.msgType', 'error');
+						$this->getApplication()->enqueueMessage(Text::_('PLG_SYSTEM_HITOBITOAUTH_SU_ERROR'), 'error');
+						$this->getApplication()->setUserState('hitobitauth.msg', Text::_('PLG_SYSTEM_HITOBITOAUTH_SU_ERROR'));
+						$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
 						$this->error = true;
 					}
 					else
 					{
-						array_push($usergroups, $map->cms_group);
+						\array_push($usergroups, $map->cms_group);
 					}
 				}
 			}
 
-			if(count($usergroups) == 0)
+			if(\count($usergroups) == 0)
 			{
 				// Use default usergroup if no matches in mapping
-				$usergroups = array(intval($this->params->get('cms_group_default', 0)));
+				$usergroups = array(\intval($this->params->get('cms_group_default', 0)));
 			}
 		}
 
@@ -739,8 +750,8 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 */
 	protected function resetUserSate()
 	{
-		Factory::getApplication()->setUserState('hitobitauth.client', null);
-		Factory::getApplication()->setUserState('hitobitauth.msg', null);
-		Factory::getApplication()->setUserState('hitobitauth.msgType', null);
+		$this->getApplication()->setUserState('hitobitauth.client', null);
+		$this->getApplication()->setUserState('hitobitauth.msg', null);
+		$this->getApplication()->setUserState('hitobitauth.msgType', null);
 	}
 }
