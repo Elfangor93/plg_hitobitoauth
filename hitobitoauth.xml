@@ -1,31 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<extension version="3.10" type="plugin" group="system" method="upgrade">
+<extension version="4.0" type="plugin" group="system" method="upgrade">
 	<name>plg_system_hitobitoauth</name>
 	<author>Schlumpf</author>
 	<creationDate>April 2023</creationDate>
 	<license>GNU General Public License version 2 or later; see LICENSE.txt</license>
 	<authorEmail>tech.spuur@quickline.com</authorEmail>
 	<authorUrl>https://tech.spuur.ch</authorUrl>
-	<version>0.9.0</version>
+	<version>1.0.0</version>
 	<description>PLG_SYSTEM_HITOBITOAUTH_XML_DESCRIPTION</description>
-	<namespace path="src">Joomla\Plugin\Filesystem\Local</namespace>
+	<namespace path="src">Schlumpf\Plugin\System\Hitobitoauth</namespace>
 	<files>
-		<filename plugin="hitobitoauth">hitobitoauth.php</filename>
-		<folder>fields</folder>
+		<folder plugin="hitobitoauth">services</folder>
 		<folder>forms</folder>
-		<folder>language</folder>
-		<folder>layouts</folder>
 		<folder>images</folder>
+		<folder>language</folder>
+		<folder>layouts</folder>		
 		<folder>src</folder>
 	</files>
-	<languages folder="language">
-		<language tag="en-GB">en-GB/en-GB.plg_system_hitobitoauth.ini</language>
-		<language tag="en-GB">en-GB/en-GB.plg_system_hitobitoauth.sys.ini</language>
-		<language tag="de-DE">de-DE/de-DE.plg_system_hitobitoauth.ini</language>
-		<language tag="de-DE">de-DE/de-DE.plg_system_hitobitoauth.sys.ini</language>
+	<languages>
+		<language tag="en-GB">language/en-GB/plg_system_hitobitoauth.ini</language>
+		<language tag="en-GB">language/en-GB/plg_system_hitobitoauth.sys.ini</language>
+		<language tag="de-DE">language/de-DE/plg_system_hitobitoauth.ini</language>
+		<language tag="de-DE">language/de-DE/plg_system_hitobitoauth.sys.ini</language>
 	</languages>
 	<config>
-		<fields name="params" addfieldpath="/plugins/system/hitobitoauth/fields">
+		<fields name="params" addfieldprefix="Schlumpf\Plugin\System\Hitobitoauth\Field">
 			<fieldset name="basic" >
 				<field
 					name="title_api"
@@ -33,7 +32,7 @@
 					label="PLG_SYSTEM_HITOBITOAUTH_APITITLE_LABEL"
 				/>
 				<field
-					type="HostUrlField"
+					type="hosturl"
 					name="redirecturi"
 					label="PLG_SYSTEM_HITOBITOAUTH_REDIRECTURI_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_REDIRECTURI_DESC"
@@ -151,7 +150,7 @@
 				/>
 				<field
 					name="cms_group_default"
-					type="usergroup"
+					type="usergrouplist"
 					default="9"
 					label="PLG_SYSTEM_HITOBITOAUTH_DEFAULT_GROUP_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_DEFAULT_GROUP_DESC"
@@ -205,6 +204,6 @@
 		</fields>
 	</config>
 	<updateservers>
-      <server type="extension" name="Systemplugin - Attnot" priority="1">https://updates.spuur.ch/plg_hitobitoauth.xml</server>
+      <server type="extension" name="Systemplugin - Hitobitoauth" priority="1">https://updates.spuur.ch/plg_hitobitoauth.xml</server>
   </updateservers>
 </extension>

@@ -7,16 +7,12 @@
  * @copyright   Copyright (C) tech.spuur.ch
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
+namespace Schlumpf\Plugin\System\Hitobitoauth\Field;
 
-defined('_JEXEC') or die();
+\defined('_JEXEC') or die();
 
-JFormHelper::loadFieldClass('url');
-
-use Joomla\CMS\Component\ComponentHelper;
-use Joomla\CMS\Factory;
-use Joomla\CMS\HTML\HTMLHelper;
-use Joomla\CMS\Language\Text;
-use Joomla\CMS\Uri\Uri;
+use \Joomla\CMS\Uri\Uri;
+use \Joomla\CMS\Form\Field\UrlField;
 
 /**
  * Form Field class for the Joomla Platform.
@@ -25,7 +21,7 @@ use Joomla\CMS\Uri\Uri;
  * @link   https://html.spec.whatwg.org/multipage/input.html#text-(type=text)-state-and-search-state-(type=search)
  * @since  1.7.0
  */
-class JFormFieldHostUrlField extends JFormFieldUrl
+class HosturlField extends UrlField
 {
 	/**
 	 * The form field type.
@@ -33,7 +29,7 @@ class JFormFieldHostUrlField extends JFormFieldUrl
 	 * @var    string
 	 * @since  1.7.0
 	 */
-	protected $type = 'HostUrlField';
+	protected $type = 'Hosturl';
 
 	/**
 	 * Method to get the field input markup.
@@ -59,7 +55,7 @@ class JFormFieldHostUrlField extends JFormFieldUrl
 	{
 		$data = parent::getLayoutData();
 
-		$data['value'] = JUri::root();
+		$data['value'] = Uri::root();
 
 		// Initialize some field attributes.
 		$maxLength    = !empty($this->maxLength) ? ' maxlength="' . $this->maxLength . '"' : '';

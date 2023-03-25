@@ -7,15 +7,15 @@
  * @copyright   Copyright (C) tech.spuur.ch
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
+namespace Schlumpf\Plugin\System\Hitobitoauth\Field;
 
 defined('_JEXEC') or die();
 
-use \Joomla\CMS\Factory;
 use \Joomla\CMS\Form\FormField;
+use \Joomla\CMS\Uri\Uri;
 use \Joomla\CMS\Language\Text;
-use \Joomla\CMS\Filesystem\Path as JPath;
 
-class JFormFieldPopupImage extends FormField
+class PopupimageField extends FormField
 {
     /**
 	 * The form field type.
@@ -23,7 +23,7 @@ class JFormFieldPopupImage extends FormField
 	 * @var    string
 	 * @since  1.7.0
 	 */
-	protected $type = 'PopupImage';
+	protected $type = 'Popupimage';
 
     /**
 	 * Hide the label when rendering the form field.
@@ -31,7 +31,7 @@ class JFormFieldPopupImage extends FormField
 	 * @var    boolean
 	 * @since  4.0.0
 	 */
-	protected $hiddenLabel = true;
+	protected $hiddenLabel = false;
 
 	/**
 	 * Hide the description when rendering the form field.
@@ -39,12 +39,13 @@ class JFormFieldPopupImage extends FormField
 	 * @var    boolean
 	 * @since  4.0.0
 	 */
-	protected $hiddenDescription = true;
+	protected $hiddenDescription = false;
 
     protected function getLabel()
     {
-		$path = JUri::root().'plugins/system/hitobitoauth/images/'.$this->element['label'];
-		return Text::_('PLG_SYSTEM_HITOBITOAUTH_EXAMPLE_IMAGE').': <a href="#" onclick="popupImage(\''.$path.'\')">'.Text::_('PLG_SYSTEM_HITOBITOAUTH_SHOW_IMAGE').'</a>';
+		$path = Uri::root().'plugins/system/hitobitoauth/images/'.$this->element['label'];
+		$html = Text::_('PLG_SYSTEM_HITOBITOAUTH_EXAMPLE_IMAGE').': <a href="#" onclick="popupImage(\''.$path.'\')">'.Text::_('PLG_SYSTEM_HITOBITOAUTH_SHOW_IMAGE').'</a>';
+		return $html;
 	}
 
     /**
@@ -61,6 +62,7 @@ class JFormFieldPopupImage extends FormField
     	$js .=      'let popupWin = window.open(url, "'.Text::_('PLG_SYSTEM_HITOBITOAUTH_EXAMPLE_IMAGE').'", winprops);';
 		$js .= '};';
 
-        return  '<script>'.$js.'</script>';
+		$html = '<script>'.$js.'</script>';
+        return  $html;
     }
 }

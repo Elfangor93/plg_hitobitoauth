@@ -7,8 +7,14 @@
  * @copyright   Copyright (C) tech.spuur.ch
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
+namespace Schlumpf\Plugin\System\Hitobitoauth\Extension;
 
-defined('_JEXEC') or die;
+\defined('_JEXEC') or die;
+
+use \Joomla\Event\DispatcherInterface;
+use \Joomla\Event\SubscriberInterface;
+use \Joomla\CMS\Plugin\CMSPlugin;
+use Joomla\Event\Event;
 
 use \Joomla\CMS\Factory;
 use \Joomla\CMS\User\User;
@@ -21,17 +27,20 @@ use \Joomla\CMS\Language\Text;
 use \Joomla\CMS\Router\Route;
 use \Joomla\CMS\Cache\Cache;
 use \Joomla\CMS\Uri\Uri;
+use \Joomla\CMS\Filesystem\Path;
 use \Joomla\CMS\Form\Form;
 use \Joomla\Registry\Registry;
 use \Joomla\CMS\Authentication\Authentication;
 use \Joomla\CMS\Authentication\AuthenticationResponse as JAuthResponse; 
 
 /**
- * Plugin class for login/register with hitobito account.
+ * Hitobito OAuth2 Login plugin
+ *  
+ * Plugin to login into Joomla CMS with OAuth2 provided by Hitobito
  *
  * @since  1.0.0
  */
-class PlgSystemHitobitoauth extends JPlugin
+class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 {
 	/**
 	 * Load plugin language files automatically
@@ -40,6 +49,16 @@ class PlgSystemHitobitoauth extends JPlugin
 	 * @since  1.0.0
 	 */
 	protected $autoloadLanguage = true;
+
+	/**
+     * Should I try to detect and register legacy event listeners?
+     *
+     * @var    boolean
+     * @since  1.0.0
+     *
+     * @deprecated
+     */
+    protected $allowLegacyListeners = false;
 
 	/**
 	 * JOAuth2Client class
@@ -105,12 +124,12 @@ class PlgSystemHitobitoauth extends JPlugin
 	/**
 	 * Constructor.
 	 *
-	 * @param   object  &$subject  The object to observe -- event dispatcher.
-	 * @param   object  $config    An optional associative array of configuration settings.
+	 * @param   DispatcherInterface   $subject   The object to observe -- event dispatcher.
+	 * @param   array                 $config    An optional associative array of configuration settings.
 	 *
 	 * @return  void
 	 */
-	public function __construct(&$subject, $config)
+	public function __construct(&$subject, array $config = [])
 	{
 		parent::__construct($subject, $config);
 
@@ -126,6 +145,33 @@ class PlgSystemHitobitoauth extends JPlugin
 			return false;
 		}
 	}
+
+	/**
+     * Returns an array of events this subscriber will listen to.
+     *
+     * @return  array
+     *
+     * @since   1.0.0
+     */
+    public static function getSubscribedEvents(): array
+    {
+        try {
+            $app = Factory::getApplication();
+        } catch (\Exception $e) {
+            return [];
+        }
+
+        if (!$app->isClient('site') && !$app->isClient('administrator')) {
+            return [];
+        }
+
+        return [
+			'onAfterRoute'			=> 'onAfterRoute',
+            'onBeforeRender'		=> 'onBeforeRender',
+            'onContentPrepareForm'	=> 'onContentPrepareForm',
+            'onUserAuthenticate'    => 'onUserAuthenticate',
+        ];
+    }
 
 	/**
 	 * Method to authenticate a user via OAuth and
@@ -276,13 +322,13 @@ class PlgSystemHitobitoauth extends JPlugin
 	 */
 	public function onBeforeRender()
 	{
-		if(Factory::getApplication()->isSite())
+		if(Factory::getApplication()->isClient('site'))
 		{
 			$doc = Factory::getApplication()->getDocument();
 
 			// script for button click
 			$script   = '';
-			$path = JPath::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/oauth.js.php');
+			$path = Path::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/oauth.js.php');
 
 			ob_start();
 			include $path;
@@ -295,11 +341,11 @@ class PlgSystemHitobitoauth extends JPlugin
 			$doc->addStyleDeclaration($css);
 
 			// logo
-			$default = JUri::root().'plugins/system/hitobitoauth/images/hitobito_logo.png';
+			$default = Uri::root().'plugins/system/hitobitoauth/images/hitobito_logo.png';
 			$logo = '<span><img src="'.$this->params->get('hitobito_logo', $default).'" alt="Hitobito Logo" width="20" height="15"></span> ';
 
 			// html button
-			$html = '<hr /><a id="hitobito_btn" class="btn btn-hitobito" href="#" onclick="getOAuthToken(this, \'site\')">'.$logo.Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_LOGIN_WITH', $this->params->get('hitobito_name','Hitobito')).'</a>';
+			$html = '<hr /><a id="hitobito_btn" class="btn btn-hitobito w-100" href="#" onclick="getOAuthToken(this, \'site\')">'.$logo.Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_LOGIN_WITH', $this->params->get('hitobito_name','Hitobito')).'</a>';
 			$html = addcslashes($html,"'\"");
 
 			// add button
@@ -309,32 +355,42 @@ class PlgSystemHitobitoauth extends JPlugin
 	}
 
 	/**
-	 * Add the hitobito id field to the user form
-	 *
-	 * @param   object  $form The form to be altered
-	 * @param   array   $data The associated data for the form
-	 * 
-	 * @return  bool    True on success, false otherwise
-	 */
-	public function onContentPrepareForm($form, $data)
+     * Adds the hitobito id field to the user editing form
+     *
+     * @param   Event  $event  The event we are handling
+     *
+     * @return  void
+     *
+     * @throws  Exception
+     * @since   4.0.0
+     */
+    public function onContentPrepareForm(Event $event): void
 	{
-		if(!($form instanceof Form))
-	    {
-	    	$this->_subject->setError(′JERROR_NOT_A_FORM′);
-	    	return false;
-	    }
+		/**
+         * @var   Form  $form The form to be altered.
+         * @var   mixed $data The associated data for the form.
+         */
+        [$form, $data] = $event->getArguments();
 
 	    // Check we are manipulating a valid form
 	    $context = $form->getName();
 		if (!in_array($context, $this->allowedContext))
 		{
-			return true;
+			return;
 		}
 
-		Form::addFormPath(__DIR__.DIRECTORY_SEPARATOR.'forms');
+		// This feature only applies in the site and administrator applications
+        if (
+            !$this->getApplication()->isClient('site')
+            && !$this->getApplication()->isClient('administrator')
+        ) {
+            return;
+        }
+
+		Form::addFormPath(JPATH_PLUGINS . '/' . $this->_type . '/' . $this->_name . '/forms');
 		$form->loadFile('user-form', false);
 
-		return true;
+		return;
 	}
 
 	/**

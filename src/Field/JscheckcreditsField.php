@@ -7,14 +7,15 @@
  * @copyright   Copyright (C) tech.spuur.ch
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
+namespace Schlumpf\Plugin\System\Hitobitoauth\Field;
 
 defined('_JEXEC') or die();
 
 use \Joomla\CMS\Form\FormField;
-use \Joomla\CMS\HTML\HTMLHelper;
 use \Joomla\CMS\Language\Text;
+use \Joomla\CMS\Filesystem\Path;
 
-class JFormFieldJsCheckCredits extends FormField
+class JscheckcreditsField extends FormField
 {
 	/**
 	 * The form field type.
@@ -22,7 +23,7 @@ class JFormFieldJsCheckCredits extends FormField
 	 * @var    string
 	 * @since  1.7.0
 	 */
-	protected $type = 'JSCheckCredits';
+	protected $type = 'Jscheckcredits';
 
 	/**
 	 * Hide the label when rendering the form field.
@@ -30,7 +31,7 @@ class JFormFieldJsCheckCredits extends FormField
 	 * @var    boolean
 	 * @since  4.0.0
 	 */
-	protected $hiddenLabel = true;
+	protected $hiddenLabel = false;
 
 	/**
 	 * Hide the description when rendering the form field.
@@ -38,7 +39,7 @@ class JFormFieldJsCheckCredits extends FormField
 	 * @var    boolean
 	 * @since  4.0.0
 	 */
-	protected $hiddenDescription = true;
+	protected $hiddenDescription = false;
 
 	/**
 	 * Method to get the field label markup.
@@ -49,7 +50,7 @@ class JFormFieldJsCheckCredits extends FormField
 	 */
 	protected function getLabel()
 	{
-		$html = '<button class="btn" onclick="getOAuthToken(this, \'administrator\')">'.Text::_($this->element['label']).'</button>';
+		$html = '<button class="btn btn-primary" onclick="getOAuthToken(this, \'administrator\')">'.Text::_($this->element['label']).'</button>';
 
 		return $html;
 	}
@@ -64,7 +65,7 @@ class JFormFieldJsCheckCredits extends FormField
 	protected function getInput()
 	{
 		$script   = '';
-		$path = JPath::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/oauth.js.php');
+		$path = Path::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/oauth.js.php');
 
 		ob_start();
 		include $path;

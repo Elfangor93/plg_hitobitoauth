@@ -7,7 +7,7 @@
             label="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_HITOBITO_LABEL"
             description="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_HITOBITO_DESC" />
         <field name="cms_group"
-            type="usergroup"
+            type="usergrouplist"
             groupByFieldset="false"
             label="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_CMS_LABEL"
             description="PLG_SYSTEM_HITOBITOAUTH_GROUPMAPPING_CMS_DESC" />
