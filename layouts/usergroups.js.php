@@ -66,26 +66,27 @@ use \Joomla\CMS\Language\Text;
         .catch(err => {
             let winprops = "height=500,width=400,top=100,left=100,scrollbars=1,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,directories=no,status=no";
             let win = window.open("","Error",winprops);
-            win.document.body.innerHTML = "<h1>Error</h1><p>"+err+"</p><p>Check if cors is enabled in your Hitobito API-Key</p>";
+            win.document.body.innerHTML = "<h1>Error</h1><p>"+err+"</p><p><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_API_ERROR_CORS'); ?></p>";
         });
     };
 
     function openModal(content)
     {
         let winprops = "height=500,width=400,top=100,left=100,scrollbars=1,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,directories=no,status=no";
-        let win = window.open("","Available Roles",winprops);
+        let win = window.open("","<?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES'); ?>",winprops);
         
         if (content == false) {
-            win.document.body.innerHTML = "<h1>Available Roles</h1><p>No roles available. Please check, that the selected usergroup contains roles.</p>";
+            win.document.body.innerHTML = "<h1><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES'); ?></h1><p><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_NO_AVAILABLE_ROLES'); ?></p>";
         } else {
-            win.document.body.innerHTML = "<h1>Available Roles</h1>";
+            win.document.body.innerHTML = "<h1><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES'); ?></h1>";
             ul = win.document.createElement('ul');
             win.document.body.appendChild(ul);
 
             content.forEach(item => {
                 let li = win.document.createElement('li');
                 ul.appendChild(li);
-                li.innerHTML += item.name;
+                //li.innerHTML += item.name;
+                li.innerHTML += item.role_class;
             });
         }        
     };

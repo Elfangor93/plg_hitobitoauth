@@ -135,7 +135,10 @@ class PlgSystemHitobitoauth extends JPlugin
 	 */
 	public function onAfterRoute()
 	{
-		if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
+		$state = Factory::getApplication()->getUserState('hitobitauth.state', null);
+
+ 		if(Factory::getApplication()->getUserState('hitobitauth.state', null) === true &&
+		   Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
 		   Factory::getApplication()->input->get('oauth',null) == 'success')
 		{
 			// Successful authetication in frontend
@@ -143,17 +146,22 @@ class PlgSystemHitobitoauth extends JPlugin
 			$script .=     'window.opener.location.reload();';
 			$script .= '}';
 			$script .= 'window.close();';
+
+			Factory::getApplication()->setUserState('hitobitauth.state', false);
 			
 			echo '<script>'.$script.'</script>';
-			Factory::getApplication()->setUserState('hitobitauth.client', null);
+
+			return;
 		}
 
-		if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'administrator' &&
+		if(Factory::getApplication()->getUserState('hitobitauth.state', null) === true &&
+		   Factory::getApplication()->getUserState('hitobitauth.client', null) == 'administrator' &&
 		   Factory::getApplication()->input->get('oauth',null) == 'success')
 		{
 			// Successful authetication in backend
 			echo Text::_('PLG_SYSTEM_HITOBITOAUTH_CHECK_CREDITS_SUCCESS');
-			Factory::getApplication()->setUserState('hitobitauth.client', null);
+
+			Factory::getApplication()->setUserState('hitobitauth.state', false);
 			die;
 		}
 
@@ -162,8 +170,9 @@ class PlgSystemHitobitoauth extends JPlugin
 		Factory::getApplication()->input->get('state',null)=='oauth' &&
 		Factory::getApplication()->input->get('code',null) != null)
 		{
-			// Start OAuth authetication
+			// Start OAuth authetication process
 			jimport('joomla.oauth2.client');
+			Factory::getApplication()->setUserState('hitobitauth.state', true);
 
 			if(Factory::getApplication()->input->get('from',null) !== null)
 			{
@@ -216,20 +225,20 @@ class PlgSystemHitobitoauth extends JPlugin
 				// Get hitobito id from current user
 				$this->hitobito_user = $this->getUserByHitobitoID($this->credentials['id']);
 
-				// prepare the response object
+				// Authenticate hitobito user
 				$response = new JAuthResponse();
 				$options  = array();
 				$this->onUserAuthenticate($options, $response);
 
 				if($this->params->get('registrationallowed', true) && $this->hitobito_user === true
-					&& $response->status == Authentication::STATUS_SUCCESS)
+					&& $response->status === Authentication::STATUS_SUCCESS)
 				{
 					// perform registration
 					$this->registerUser($response);
 				}
 
 				if($this->hitobito_user instanceof User && $this->params->get('updateallowed', true)
-					&& $response->status == Authentication::STATUS_SUCCESS)
+					&& $response->status === Authentication::STATUS_SUCCESS)
 				{
 					// update the current joomla user based on hitobito data
 					$this->updateUser();
@@ -247,9 +256,16 @@ class PlgSystemHitobitoauth extends JPlugin
 
 		if(Factory::getApplication()->getUserState('hitobitauth.msg', null))
 		{
+			// Output messages from user state if available
 			$msg     = Factory::getApplication()->getUserState('hitobitauth.msg', null);
 			$msgType = Factory::getApplication()->getUserState('hitobitauth.msgType', 'message');
 			Factory::getApplication()->enqueueMessage($msg, $msgType);
+
+			if(Factory::getApplication()->getUserState('hitobitauth.state', null) === false)
+			{
+				// End OAuth authetication process
+				$this->resetUserSate();
+			}			
 		}
 	}
 
@@ -336,11 +352,22 @@ class PlgSystemHitobitoauth extends JPlugin
 		{
 			$response->type = 'JOAuth';
 
-			if(Factory::getApplication()->input->get('state',null) != 'oauth' || $this->hitobito_user === false)
+			if(Factory::getApplication()->input->get('state',null) != 'oauth' || $this->hitobito_user === false
+				|| ($this->params->get('grouprestriction', false) && !in_array($this->params->get('hitobito_groupid', 0), $this->groups)))
 			{
 				// authentication failed
 				$response->status        = Authentication::STATUS_FAILURE;
-				$response->error_message = Text::_('PLG_SYSTEM_HITOBITOAUTH_AUTH_USERNOTFOUND');
+
+				if($this->hitobito_user === false)
+				{
+					// user not found in CMS
+					$response->error_message = Text::_('PLG_SYSTEM_HITOBITOAUTH_AUTH_USERNOTFOUND');
+				}
+				else
+				{
+					// other failure
+					$response->error_message = Text::_('PLG_SYSTEM_HITOBITOAUTH_AUTH_ERROR_DEFAULT');
+				}
 
 				return false;
 			}
@@ -402,7 +429,7 @@ class PlgSystemHitobitoauth extends JPlugin
 	{
 		PluginHelper::importPlugin('user');
 
-		if($response->status == Authentication::STATUS_SUCCESS && !$this->error)
+		if($response->status === Authentication::STATUS_SUCCESS && !$this->error)
 		{
 			$app = Factory::getApplication();
 			//$response->password_clear = UserHelper::genRandomPassword();
@@ -436,9 +463,9 @@ class PlgSystemHitobitoauth extends JPlugin
 			else
 			{
 				// Login failed
-				Factory::getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname), 'message');
+				Factory::getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname), 'error');
 				Factory::getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname));
-				Factory::getApplication()->setUserState('hitobitauth.msgType', 'message');
+				Factory::getApplication()->setUserState('hitobitauth.msgType', 'error');
 
 				return false;
 			}
@@ -462,9 +489,9 @@ class PlgSystemHitobitoauth extends JPlugin
 		// If status is success, any error will have been raised by the user plugin
 		if ($response->status !== Authentication::STATUS_SUCCESS)
 		{
-			Factory::getApplication()->enqueueMessage($response->error_message, 'warning');
+			Factory::getApplication()->enqueueMessage($response->error_message, 'error');
 			Factory::getApplication()->setUserState('hitobitauth.msg', $response->error_message);
-			Factory::getApplication()->setUserState('hitobitauth.msgType', 'warning');
+			Factory::getApplication()->setUserState('hitobitauth.msgType', 'error');
 		}
 
 		return false;
@@ -574,7 +601,7 @@ class PlgSystemHitobitoauth extends JPlugin
 	 * 
 	 * @param   integer   $group_id   ID of the Hitobito group id to be used
 	 * 
-	 * @return  array     Array with available roles of this user	 * 
+	 * @return  array     Array with available roles of this user
 	 */
 	protected function getRolesOfGroup($group_id)
 	{
@@ -584,7 +611,8 @@ class PlgSystemHitobitoauth extends JPlugin
 		{
 			if($role['group_id'] == $group_id)
 			{
-				array_push($group_roles, $role['role_name']);
+				//array_push($group_roles, $role['name']);
+				array_push($group_roles, $role['role_class']);
 			}
 		}
 
@@ -594,7 +622,7 @@ class PlgSystemHitobitoauth extends JPlugin
 	/**
 	 *  Get CMS usergroups based on Hitobito roles
 	 * 
-	 * @return  array     Array with associated usergroups	 * 
+	 * @return  array     Array with associated usergroups
 	 */
 	protected function getUsergroups()
 	{
@@ -646,5 +674,17 @@ class PlgSystemHitobitoauth extends JPlugin
 	protected function checkSU($group_id)
 	{
 		return Access::checkGroup($group_id, 'core.admin');
+	}
+
+	/**
+	 *  Resets all user states
+	 * 
+	 * @return  void
+	 */
+	protected function resetUserSate()
+	{
+		Factory::getApplication()->setUserState('hitobitauth.client', null);
+		Factory::getApplication()->setUserState('hitobitauth.msg', null);
+		Factory::getApplication()->setUserState('hitobitauth.msgType', null);
 	}
 }

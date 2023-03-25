@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<extension version="3.1" type="plugin" group="system" method="upgrade">
+<extension version="3.10" type="plugin" group="system" method="upgrade">
 	<name>plg_system_hitobitoauth</name>
 	<author>Schlumpf</author>
-	<creationDate>April 2022</creationDate>
+	<creationDate>April 2023</creationDate>
 	<license>GNU General Public License version 2 or later; see LICENSE.txt</license>
 	<authorEmail>tech.spuur@quickline.com</authorEmail>
 	<authorUrl>https://tech.spuur.ch</authorUrl>
 	<version>1.0.0</version>
 	<description>PLG_SYSTEM_HITOBITOAUTH_XML_DESCRIPTION</description>
+	<namespace path="src">Joomla\Plugin\Filesystem\Local</namespace>
 	<files>
 		<filename plugin="hitobitoauth">hitobitoauth.php</filename>
 		<folder>fields</folder>
@@ -86,6 +87,7 @@
 				<field
 					type="text"
 					name="hitobito_groupid"
+					required="true"
 					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_DESC"
 				/>
@@ -128,8 +130,7 @@
 					label="PLG_SYSTEM_HITOBITOAUTH_AUTOREGISTER_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_AUTOREGISTER_DESC"
 					class="btn-group btn-group-yesno"
-					default="1"
-				>
+					default="1">
 					<option value="1">JYES</option>
 					<option value="0">JNO</option>
 				</field>
@@ -139,8 +140,7 @@
 					label="PLG_SYSTEM_HITOBITOAUTH_AUTOUPDATE_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_AUTOUPDATE_DESC"
 					class="btn-group btn-group-yesno"
-					default="1"
-				>
+					default="1">
 					<option value="1">JYES</option>
 					<option value="0">JNO</option>
 				</field>
