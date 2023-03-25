@@ -135,10 +135,6 @@ class PlgSystemHitobitoauth extends JPlugin
 	 */
 	public function onAfterRoute()
 	{
-		$tmp1 = Factory::getApplication()->input->get('from', null);
-		$tmp2 = Factory::getApplication()->input->get('oauth', null);
-		$tmp3 = Factory::getApplication()->getUserState('hitobitauth.client', null);
-
 		if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
 		   Factory::getApplication()->input->get('oauth',null) == 'success')
 		{
@@ -204,7 +200,8 @@ class PlgSystemHitobitoauth extends JPlugin
 				'http'=>array(
 					'method'=>'GET',
 					'header'=>"Authorization: Bearer $this->token\r\n" .
-							"X-Scope: with_roles\r\n"
+							"X-Scope: with_roles\r\n" .
+							"Accept-Language: de\r\n"
 				)
 				);
 				$context = stream_context_create($opts);
@@ -246,6 +243,13 @@ class PlgSystemHitobitoauth extends JPlugin
 				// if not redirected on onAfterLogin just go to front page //
 				Factory::getApplication()->redirect(Route::_('index.php?oauth=success'));
 			}
+		}
+
+		if(Factory::getApplication()->getUserState('hitobitauth.msg', null))
+		{
+			$msg     = Factory::getApplication()->getUserState('hitobitauth.msg', null);
+			$msgType = Factory::getApplication()->getUserState('hitobitauth.msgType', 'message');
+			Factory::getApplication()->enqueueMessage($msg, $msgType);
 		}
 	}
 
@@ -422,14 +426,26 @@ class PlgSystemHitobitoauth extends JPlugin
 
 			if (in_array(false, $results, true) == false)
 			{
+				// Login successful
 				$options['user'] = $user;
 				$options['responseType'] = $response->type;
 
 				// The user is successfully logged in. Run the after login events
 				Factory::getApplication()->triggerEvent('onUserAfterLogin', array($options));
 			}
+			else
+			{
+				// Login failed
+				Factory::getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname), 'message');
+				Factory::getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname));
+				Factory::getApplication()->setUserState('hitobitauth.msgType', 'message');
+
+				return false;
+			}
 
 			Factory::getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname), 'message');
+			Factory::getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname));
+			Factory::getApplication()->setUserState('hitobitauth.msgType', 'message');
 
 			return true;
 		}
@@ -447,6 +463,8 @@ class PlgSystemHitobitoauth extends JPlugin
 		if ($response->status !== Authentication::STATUS_SUCCESS)
 		{
 			Factory::getApplication()->enqueueMessage($response->error_message, 'warning');
+			Factory::getApplication()->setUserState('hitobitauth.msg', $response->error_message);
+			Factory::getApplication()->setUserState('hitobitauth.msgType', 'warning');
 		}
 
 		return false;
@@ -524,6 +542,8 @@ class PlgSystemHitobitoauth extends JPlugin
 		{
 			Factory::getApplication()->enqueueMessage('Error in autoregistration for user: ' . $response->username, 'error');
 			JLog::add('Error in autoregistration for user: ' . $response->username . '.', JLog::WARNING, 'error');
+			Factory::getApplication()->setUserState('hitobitauth.msg', 'Error in autoregistration for user: ' . $response->username);
+			Factory::getApplication()->setUserState('hitobitauth.msgType', 'error');
 		}
 	}
 
@@ -544,6 +564,8 @@ class PlgSystemHitobitoauth extends JPlugin
 		{
 			Factory::getApplication()->enqueueMessage('Error in updating user data: ' . $this->hitobito_user->username, 'error');
 			JLog::add('Error in updating user data: ' . $this->hitobito_user->username . '.', JLog::WARNING, 'error');
+			Factory::getApplication()->setUserState('hitobitauth.msg', 'Error in updating user data: ' . $this->hitobito_user->username);
+			Factory::getApplication()->setUserState('hitobitauth.msgType', 'error');
 		}
 	}
 
@@ -593,6 +615,8 @@ class PlgSystemHitobitoauth extends JPlugin
 					{
 						// try to map super user group
 						Factory::getApplication()->enqueueMessage(Text::_('PLG_SYSTEM_HITOBITOAUTH_SU_ERROR'), 'error');
+						Factory::getApplication()->setUserState('hitobitauth.msg', Text::_('PLG_SYSTEM_HITOBITOAUTH_SU_ERROR'));
+						Factory::getApplication()->setUserState('hitobitauth.msgType', 'error');
 						$this->error = true;
 					}
 					else
