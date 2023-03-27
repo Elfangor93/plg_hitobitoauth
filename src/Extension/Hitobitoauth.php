@@ -13,28 +13,27 @@ namespace Schlumpf\Plugin\System\Hitobitoauth\Extension;
 
 use \Joomla\Event\DispatcherInterface;
 use \Joomla\Event\SubscriberInterface;
-use \Joomla\CMS\Plugin\CMSPlugin;
 use \Joomla\Event\Event;
 
+use \Joomla\Database\DatabaseInterface;
+use \Joomla\Http\HttpFactory;
 use \Joomla\CMS\Factory;
 use \Joomla\CMS\User\User;
-use \Joomla\CMS\Access\Access;
-use \Joomla\CMS\Component\ComponentHelper;
-use \Joomla\CMS\Plugin\PluginHelper;
+use \Joomla\CMS\User\UserFactoryInterface;
 use \Joomla\CMS\User\UserHelper;
-use \Joomla\CMS\MVC\Model\BaseDatabaseModel;
+use \Joomla\CMS\Access\Access;
 use \Joomla\CMS\Language\Text;
 use \Joomla\CMS\Router\Route;
-use \Joomla\CMS\Cache\Cache;
 use \Joomla\CMS\Uri\Uri;
 use \Joomla\CMS\Filesystem\Path;
 use \Joomla\CMS\Form\Form;
 use \Joomla\CMS\Log\Log;
-use \Joomla\Registry\Registry;
-use \Joomla\Http\HttpFactory;
-use \Schlumpf\Plugin\System\Hitobitoauth\Oauth\Customclient as OAuth2ClientCustom;
 use \Joomla\CMS\Authentication\Authentication;
 use \Joomla\CMS\Authentication\AuthenticationResponse as AuthResponse;
+
+use \Joomla\CMS\Plugin\PluginHelper;
+use \Joomla\CMS\Plugin\CMSPlugin;
+use \Schlumpf\Plugin\System\Hitobitoauth\Oauth\Customclient as OAuth2ClientCustom;
 
 /**
  * Hitobito OAuth2 Login plugin
@@ -54,14 +53,14 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	protected $autoloadLanguage = true;
 
 	/**
-     * Should I try to detect and register legacy event listeners?
-     *
-     * @var    boolean
-     * @since  1.0.0
-     *
-     * @deprecated
-     */
-    protected $allowLegacyListeners = false;
+   * Should I try to detect and register legacy event listeners?
+   *
+   * @var    boolean
+   * @since  1.0.0
+   *
+   * @deprecated
+   */
+  protected $allowLegacyListeners = false;
 
 	/**
 	 * JOAuth2Client class
@@ -159,20 +158,22 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
     public static function getSubscribedEvents(): array
     {
         try {
-            $app = Factory::getApplication();
-        } catch (\Exception $e) {
-            return [];
+          $app = Factory::getApplication();
+        }
+        catch (\Exception $e)
+        {
+          return [];
         }
 
-        if (!$app->isClient('site') && !$app->isClient('administrator')) {
-            return [];
+        if (!$app->isClient('site') && !$app->isClient('administrator'))
+        {
+          return [];
         }
 
         return [
-			'onAfterRoute'			=> 'onAfterRoute',
-            'onBeforeRender'		=> 'onBeforeRender',
+			      'onAfterRoute'			    => 'onAfterRoute',
+            'onBeforeRender'		    => 'onBeforeRender',
             'onContentPrepareForm'	=> 'onContentPrepareForm',
-            'onUserAuthenticate'    => 'onUserAuthenticate',
         ];
     }
 
@@ -185,12 +186,12 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	public function onAfterRoute()
 	{
 		// This feature only applies in the site and administrator applications
-        if( !$this->getApplication()->isClient('site') &&
-			!$this->getApplication()->isClient('administrator')
-          )
+    if( !$this->getApplication()->isClient('site') &&
+			  !$this->getApplication()->isClient('administrator')
+      )
 		{
-            return;
-        }
+      return;
+    }
 
 		$state = $this->getApplication()->getUserState('hitobitauth.state', null);
 
@@ -263,12 +264,12 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 				// Fetch authenticated user info
 				$opts = array(
-				'http'=>array(
-					'method'=>'GET',
-					'header'=>"Authorization: Bearer $this->token\r\n" .
-							"X-Scope: with_roles\r\n" .
-							"Accept-Language: de\r\n"
-				)
+          'http'=>array(
+            'method'=>'GET',
+            'header'=>"Authorization: Bearer $this->token\r\n" .
+                      "X-Scope: with_roles\r\n" .
+                      "Accept-Language: de\r\n"
+          )
 				);
 				$context = \stream_context_create($opts);
 				$file = \file_get_contents($this->params->get('clienthost','https://demo.hitobito.com').'/oauth/profile', false, $context);
@@ -287,22 +288,21 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				$options  = array();
 				$this->onUserAuthenticate($options, $response);
 
-				if($this->params->get('registrationallowed', true) && $this->hitobito_user === true
-					&& $response->status === Authentication::STATUS_SUCCESS)
+				if($this->params->get('registrationallowed', true) && $this->hitobito_user === true &&
+           $response->status === Authentication::STATUS_SUCCESS)
 				{
 					// perform registration
 					$this->registerUser($response);
 				}
 
-				if($this->hitobito_user instanceof User && $this->params->get('updateallowed', true)
-					&& $response->status === Authentication::STATUS_SUCCESS)
+				if($this->hitobito_user instanceof User && $this->params->get('updateallowed', true) &&
+           $response->status === Authentication::STATUS_SUCCESS)
 				{
 					// update the current joomla user based on hitobito data
 					$this->updateUser();
 				}
 
-				$options = array('action' => 'core.login.'.($this->getApplication()->isClient('site')?'site':'admin'),
-								'autoregister' => false);
+				$options = array('action' => 'core.login.'.($this->getApplication()->isClient('site')?'site':'admin'), 'autoregister' => false);
 				
 				$this->login($options, $response);
 
@@ -378,25 +378,25 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
     public function onContentPrepareForm(Event $event): void
 	{
 		/**
-         * @var   Form  $form The form to be altered.
-         * @var   mixed $data The associated data for the form.
-         */
-        [$form, $data] = $event->getArguments();
+     * @var   Form  $form The form to be altered.
+     * @var   mixed $data The associated data for the form.
+     */
+    [$form, $data] = $event->getArguments();
 
-	    // Check we are manipulating a valid form
-	    $context = $form->getName();
+	  // Check we are manipulating a valid form
+	  $context = $form->getName();
 		if (!\in_array($context, $this->allowedContext))
 		{
 			return;
 		}
 
 		// This feature only applies in the site and administrator applications
-        if( !$this->getApplication()->isClient('site') &&
-			!$this->getApplication()->isClient('administrator')
-          )
+    if( !$this->getApplication()->isClient('site') &&
+			  !$this->getApplication()->isClient('administrator')
+      )
 		{
-            return;
-        }
+      return;
+    }
 
 		Form::addFormPath(JPATH_PLUGINS . '/' . $this->_type . '/' . $this->_name . '/forms');
 		$form->loadFile('user-form', false);
@@ -498,11 +498,12 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 		if($response->status === Authentication::STATUS_SUCCESS && !$this->error)
 		{
-			$app = $this->getApplication();
-			//$response->password_clear = UserHelper::genRandomPassword();
-
 			// OK, the credentials are authenticated and user is authorised.  Let's fire the onLogin event.
-			$results = $app->triggerEvent('onUserLogin', array((array) $response, $options));
+			//$results = $app->triggerEvent('onUserLogin', array((array) $response, $options));
+      $eventClassName = self::getEventClassByEventName('onUserLogin');
+      $event          = new $eventClassName('onUserLogin', [(array) $response, $options]);
+      $result         = $this->getApplication()->getDispatcher()->dispatch($event->getName(), $event);
+      $results        = !isset($result['result']) || \is_null($result['result']) ? [] : $result['result'];
 
 			/*
 			 * If any of the user plugins did not successfully complete the login routine
@@ -511,21 +512,27 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			 * Any errors raised should be done in the plugin as this provides the ability
 			 * to provide much more information about why the routine may have failed.
 			 */
-			$user = Factory::getUser();
+			$user = Factory::getContainer()->get(UserFactoryInterface::class);
 
 			if ($response->type == 'Cookie')
 			{
 				$user->set('cookieLogin', true);
 			}
 
-			if (\in_array(false, $results, true) == false)
+			if (\in_array(false, $results, true) === false)
 			{
-				// Login successful
+        // Set the user in the session, letting Joomla! know that we are logged in.
+        $this->getApplication()->getSession()->set('user', $user);
+
+				// Trigger the onUserAfterLogin event
 				$options['user'] = $user;
 				$options['responseType'] = $response->type;
 
 				// The user is successfully logged in. Run the after login events
-				$this->getApplication()->triggerEvent('onUserAfterLogin', array($options));
+				//$this->getApplication()->triggerEvent('onUserAfterLogin', array($options));
+        $eventClassName = self::getEventClassByEventName('onUserAfterLogin');
+        $event          = new $eventClassName('onUserAfterLogin', [$options]);
+        $this->getApplication()->getDispatcher()->dispatch($event->getName(), $event);
 			}
 			else
 			{
@@ -544,8 +551,14 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			return true;
 		}
 
-		// Trigger onUserLoginFailure Event.
-		$this->getApplication()->triggerEvent('onUserLoginFailure', array((array) $response));
+		// If we are here the plugins marked a login failure. Trigger the onUserLoginFailure Event.
+		//$this->getApplication()->triggerEvent('onUserLoginFailure', array((array) $response));
+    $eventClassName = self::getEventClassByEventName('onUserLoginFailure');
+    $event          = new $eventClassName('onUserLoginFailure', [(array) $response]);
+    $this->getApplication()->getDispatcher()->dispatch($event->getName(), $event);
+
+    // Log the failure
+    Log::add($response->error_message, Log::WARNING, 'jerror');
 
 		// If silent is set, just return false.
 		if (isset($options['silent']) && $options['silent'])
@@ -561,7 +574,8 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
 		}
 
-		return false;
+    // Throw an exception to let the caller know that the login failed
+    throw new RuntimeException($response->error_message);
 	}
 
 	/**
@@ -578,7 +592,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			return false;
 		}
 
-		$db = Factory::getDbo();
+		$db = Factory::getContainer()->get(DatabaseInterface::class);
 		$query = $db->getQuery(true);
 
 		$query->select($db->quoteName(array('id', 'params')));
@@ -604,7 +618,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			return true;
 		}
 
-		return Factory::getUser($id);
+		return Factory::getContainer()->get(UserFactoryInterface::class)->loadUserById($id);
 	}
 
 	/**
@@ -617,10 +631,10 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	protected function registerUser($response)
 	{
 		// user object
-		$instance = User::getInstance();
+		$instance = Factory::getContainer()->get(UserFactoryInterface::class)->loadUserById(0);
 		
 		// Get usergroups based on hitobito roles
-		$usergroups = $this->getUsergroups();		
+		$usergroups = $this->getUsergroups();
 
 		// fill user object
 		$instance->id             = 0;
