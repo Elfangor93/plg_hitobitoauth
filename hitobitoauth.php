@@ -143,21 +143,20 @@ class PlgSystemHitobitoauth extends JPlugin
 	 */
 	public function onAfterRoute()
 	{
-<<<<<<< Updated upstream
-		$state = Factory::getApplication()->getUserState('hitobitauth.state', null);
+		// $state = Factory::getApplication()->getUserState('hitobitauth.state', null);
 
- 		if(Factory::getApplication()->getUserState('hitobitauth.state', null) === true &&
-		   Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
-		   Factory::getApplication()->input->get('oauth',null) == 'success')
-=======
-		$vars = Factory::getApplication()->input->getArray(array());
-		$user_states = array(Factory::getApplication()->getUserState('hitobitauth.client', null),
-							Factory::getApplication()->getUserState('hitobitauth.user.fullname', null));
+ 		// if(Factory::getApplication()->getUserState('hitobitauth.state', null) === true &&
+		//    Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
+		//    Factory::getApplication()->input->get('oauth',null) == 'success')
+    // {
+    //   $vars = Factory::getApplication()->input->getArray(array());
+		//   $user_states = array(Factory::getApplication()->getUserState('hitobitauth.client', null),
+		// 	Factory::getApplication()->getUserState('hitobitauth.user.fullname', null));
+    // }
 
 		if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
 		   Factory::getApplication()->input->get('oauth',null) == 'success' &&
 		   !Factory::getApplication()->input->get('reloaded',false))
->>>>>>> Stashed changes
 		{
 			// Successful authetication in frontend (close and reload)
 			$script  = 'if (window.opener != null && !window.opener.closed) {';
@@ -171,10 +170,8 @@ class PlgSystemHitobitoauth extends JPlugin
 			Factory::getApplication()->setUserState('hitobitauth.state', false);
 			
 			echo '<script>'.$script.'</script>';
-<<<<<<< Updated upstream
 
 			return;
-=======
 		}
 
 		if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
@@ -188,7 +185,6 @@ class PlgSystemHitobitoauth extends JPlugin
 			// Reset user states
 			Factory::getApplication()->setUserState('hitobitauth.client', null);
 			Factory::getApplication()->setUserState('hitobitauth.user.fullname', null);
->>>>>>> Stashed changes
 		}
 
 		if(Factory::getApplication()->getUserState('hitobitauth.state', null) === true &&
@@ -198,12 +194,9 @@ class PlgSystemHitobitoauth extends JPlugin
 			// Successful authetication in backend
 			echo Text::_('PLG_SYSTEM_HITOBITOAUTH_CHECK_CREDITS_SUCCESS');
 
-<<<<<<< Updated upstream
-			Factory::getApplication()->setUserState('hitobitauth.state', false);
-=======
-			// Reset user states
+      // Reset user states
+			Factory::getApplication()->setUserState('hitobitauth.state', false);			
 			Factory::getApplication()->setUserState('hitobitauth.client', null);
->>>>>>> Stashed changes
 			die;
 		}
 
@@ -520,12 +513,9 @@ class PlgSystemHitobitoauth extends JPlugin
 			}
 
 			Factory::getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname), 'message');
-<<<<<<< Updated upstream
 			Factory::getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname));
 			Factory::getApplication()->setUserState('hitobitauth.msgType', 'message');
-=======
 			Factory::getApplication()->setUserState('hitobitauth.user.fullname', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname));
->>>>>>> Stashed changes
 
 			return true;
 		}
