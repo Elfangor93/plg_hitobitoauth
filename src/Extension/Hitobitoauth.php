@@ -25,7 +25,7 @@ use \Joomla\CMS\Access\Access;
 use \Joomla\CMS\Language\Text;
 use \Joomla\CMS\Router\Route;
 use \Joomla\CMS\Uri\Uri;
-use \Joomla\CMS\Filesystem\Path;
+use \Joomla\Filesystem\Path;
 use \Joomla\CMS\Form\Form;
 use \Joomla\CMS\Log\Log;
 use \Joomla\CMS\Authentication\Authentication;
@@ -379,15 +379,26 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	{
 		/**
      * @var   Form  $form The form to be altered.
-     * @var   mixed $data The associated data for the form.
      */
-    [$form, $data] = $event->getArguments();
+    extract($event->getArguments());
+    $form = $event->getForm();
 
-	  // Check we are manipulating a valid form
+    // Check we are manipulating a valid form
+    if(!($form instanceof Form))
+    {
+      $this->setError($event, 'JERROR_NOT_A_FORM');
+      $this->setResult($event, true);
+
+      return;
+    }
+
+	  // Modify only forms that have the correct context
 	  $context = $form->getName();
 		if (!\in_array($context, $this->allowedContext))
 		{
-			return;
+      $this->setResult($event, true);
+
+      return;
 		}
 
 		// This feature only applies in the site and administrator applications
@@ -395,11 +406,15 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			  !$this->getApplication()->isClient('administrator')
       )
 		{
+      $this->setResult($event, true);
+
       return;
     }
 
 		Form::addFormPath(JPATH_PLUGINS . '/' . $this->_type . '/' . $this->_name . '/forms');
 		$form->loadFile('user-form', false);
+
+    $this->setResult($event, true);
 
 		return;
 	}
@@ -767,5 +782,58 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		$this->getApplication()->setUserState('hitobitauth.client', null);
 		$this->getApplication()->setUserState('hitobitauth.msg', null);
 		$this->getApplication()->setUserState('hitobitauth.msgType', null);
+	}
+
+  /**
+   * Returns the plugin result
+   *
+   * @param   Event  $event  The event object
+   * @param   mixed  $value  The value to be added to the result
+   * @param   bool   $array  True, if the reuslt has to be added/set to the result array. False to override the boolean result value.
+   *
+   * @return  void
+   */
+  private function setResult(Event $event, $value, $array=true): void
+	{
+		if($event instanceof ResultAwareInterface)
+    {
+			$event->addResult($value);
+			
+			return;
+		}
+
+    if($array)
+    {
+      $result   = $event->getArgument('result', []) ?: [];
+		  $result   = is_array($result) ? $result : [];
+		  $result[] = $value;
+    }
+    else
+    {
+      $result   = $event->getArgument('result', true) ?: true;
+      $result   = ($result == false) ? false : $value;
+    }
+		
+		$event->setArgument('result', $result);
+	}
+
+  /**
+   * Returns the plugin error
+   *
+   * @param   Event  $event    The event object
+   * @param   mixed  $message  The message to be added to the error
+   *
+   * @return  void
+   */
+  private function setError(Event $event, $message): void
+	{
+		if($event instanceof EventInterface)
+    {
+
+      $event->setArgument('error', $message);
+      $event->setArgument('errorMessage', $message);
+			
+			return;
+		}
 	}
 }

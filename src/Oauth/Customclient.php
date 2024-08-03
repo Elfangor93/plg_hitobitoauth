@@ -65,7 +65,7 @@ class Customclient extends OAuth2Client
 			//$response->headers = array_change_key_case($response->headers, CASE_LOWER);
 			$key = (array_key_exists('Content-Type', $response->headers)) ? 'Content-Type' : 'content-type';
 
-			if (strpos($response->headers[$key], 'application/json') !== false)
+			if (strpos($response->headers[$key][0], 'application/json') !== false)
 			{
 				$token = array_merge(json_decode($response->body, true), ['created' => time()]);
 			}
