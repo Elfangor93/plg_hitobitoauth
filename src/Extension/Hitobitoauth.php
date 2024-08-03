@@ -11,6 +11,7 @@ namespace Schlumpf\Plugin\System\Hitobitoauth\Extension;
 
 \defined('_JEXEC') or die;
 
+use \Joomla\CMS\Event\CoreEventAware;
 use \Joomla\Event\DispatcherInterface;
 use \Joomla\Event\SubscriberInterface;
 use \Joomla\Event\Event;
@@ -44,6 +45,9 @@ use \Schlumpf\Plugin\System\Hitobitoauth\Oauth\Customclient as OAuth2ClientCusto
  */
 class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 {
+  // Utility methods
+  use CoreEventAware;
+
 	/**
 	 * Load plugin language files automatically
 	 *
