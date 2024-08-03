@@ -90,6 +90,14 @@ class PlgSystemHitobitoauth extends JPlugin
 	protected $error = false;
 
 	/**
+	 * Success message after login process
+	 *
+	 * @var    string
+	 * @since  1.0.0
+	 */
+	protected $success = false;
+
+	/**
 	 * Allowed contexts
 	 *
 	 * @var    array
@@ -135,23 +143,52 @@ class PlgSystemHitobitoauth extends JPlugin
 	 */
 	public function onAfterRoute()
 	{
+<<<<<<< Updated upstream
 		$state = Factory::getApplication()->getUserState('hitobitauth.state', null);
 
  		if(Factory::getApplication()->getUserState('hitobitauth.state', null) === true &&
 		   Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
 		   Factory::getApplication()->input->get('oauth',null) == 'success')
+=======
+		$vars = Factory::getApplication()->input->getArray(array());
+		$user_states = array(Factory::getApplication()->getUserState('hitobitauth.client', null),
+							Factory::getApplication()->getUserState('hitobitauth.user.fullname', null));
+
+		if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
+		   Factory::getApplication()->input->get('oauth',null) == 'success' &&
+		   !Factory::getApplication()->input->get('reloaded',false))
+>>>>>>> Stashed changes
 		{
-			// Successful authetication in frontend
+			// Successful authetication in frontend (close and reload)
 			$script  = 'if (window.opener != null && !window.opener.closed) {';
-			$script .=     'window.opener.location.reload();';
+			$script .= 	   'let url = window.opener.location.href;';
+			$script .=     'url = url+"?oauth=success&reloaded=true";';
+			$script .=     'window.opener.location.href = url;';
+			$script .=     'window.opener.location.reload();';			
 			$script .= '}';
 			$script .= 'window.close();';
 
 			Factory::getApplication()->setUserState('hitobitauth.state', false);
 			
 			echo '<script>'.$script.'</script>';
+<<<<<<< Updated upstream
 
 			return;
+=======
+		}
+
+		if(Factory::getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
+		   Factory::getApplication()->input->get('oauth',null) == 'success' &&
+		   Factory::getApplication()->input->get('reloaded',false))
+		{
+			// Successful authetication in frontend (reloaded)
+			$script  = 'Joomla.renderMessages({"success":["'.Factory::getApplication()->getUserState('hitobitauth.user.fullname', 'Icognito').'"]});';
+			$this->success = $script;
+
+			// Reset user states
+			Factory::getApplication()->setUserState('hitobitauth.client', null);
+			Factory::getApplication()->setUserState('hitobitauth.user.fullname', null);
+>>>>>>> Stashed changes
 		}
 
 		if(Factory::getApplication()->getUserState('hitobitauth.state', null) === true &&
@@ -161,7 +198,12 @@ class PlgSystemHitobitoauth extends JPlugin
 			// Successful authetication in backend
 			echo Text::_('PLG_SYSTEM_HITOBITOAUTH_CHECK_CREDITS_SUCCESS');
 
+<<<<<<< Updated upstream
 			Factory::getApplication()->setUserState('hitobitauth.state', false);
+=======
+			// Reset user states
+			Factory::getApplication()->setUserState('hitobitauth.client', null);
+>>>>>>> Stashed changes
 			die;
 		}
 
@@ -280,6 +322,13 @@ class PlgSystemHitobitoauth extends JPlugin
 		{
 			$doc = Factory::getApplication()->getDocument();
 
+			if($this->success !== false)
+			{
+				// add success message to queue
+				var_dump($this->success);
+				$doc->addScriptDeclaration($this->success);
+			}
+
 			// script for button click
 			$script   = '';
 			$path = JPath::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/oauth.js.php');
@@ -299,7 +348,7 @@ class PlgSystemHitobitoauth extends JPlugin
 			$logo = '<span><img src="'.$this->params->get('hitobito_logo', $default).'" alt="Hitobito Logo" width="20" height="15"></span> ';
 
 			// html button
-			$html = '<hr /><a id="hitobito_btn" class="btn btn-hitobito" href="#" onclick="getOAuthToken(this, \'site\')">'.$logo.Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_LOGIN_WITH', $this->params->get('hitobito_name','Hitobito')).'</a>';
+			$html = '<hr /><button id="hitobito_btn" class="btn btn-hitobito" onclick="getOAuthToken(event, this, \'site\')">'.$logo.Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_LOGIN_WITH', $this->params->get('hitobito_name','Hitobito')).'</button>';
 			$html = addcslashes($html,"'\"");
 
 			// add button
@@ -471,8 +520,12 @@ class PlgSystemHitobitoauth extends JPlugin
 			}
 
 			Factory::getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname), 'message');
+<<<<<<< Updated upstream
 			Factory::getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname));
 			Factory::getApplication()->setUserState('hitobitauth.msgType', 'message');
+=======
+			Factory::getApplication()->setUserState('hitobitauth.user.fullname', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname));
+>>>>>>> Stashed changes
 
 			return true;
 		}

@@ -73,12 +73,21 @@ use \Joomla\CMS\Language\Text;
     function openModal(content)
     {
         let winprops = "height=500,width=400,top=100,left=100,scrollbars=1,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,directories=no,status=no";
+<<<<<<< Updated upstream
         let win = window.open("","<?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES'); ?>",winprops);
         
         if (content == false) {
             win.document.body.innerHTML = "<h1><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES'); ?></h1><p><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_NO_AVAILABLE_ROLES'); ?></p>";
         } else {
             win.document.body.innerHTML = "<h1><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES'); ?></h1>";
+=======
+        let win = window.open("","<?php Text::_('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES'); ?>",winprops);
+        
+        if (content == false) {
+            win.document.body.innerHTML = "<h1><?php Text::_('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES'); ?></h1><p><?php Text::_('PLG_SYSTEM_HITOBITOAUTH_ERROR_NO_ROLES'); ?></p>";
+        } else {
+            win.document.body.innerHTML = "<h1><?php Text::_('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES'); ?></h1>";
+>>>>>>> Stashed changes
             ul = win.document.createElement('ul');
             win.document.body.appendChild(ul);
 
