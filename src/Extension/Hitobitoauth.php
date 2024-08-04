@@ -517,12 +517,12 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 		if($response->status === Authentication::STATUS_SUCCESS && !$this->error)
 		{
+
 			// OK, the credentials are authenticated and user is authorised.  Let's fire the onLogin event.
-			//$results = $app->triggerEvent('onUserLogin', array((array) $response, $options));
-      $eventClassName = self::getEventClassByEventName('onUserLogin');
-      $event          = new $eventClassName('onUserLogin', [(array) $response, $options]);
-      $result         = $this->getApplication()->getDispatcher()->dispatch($event->getName(), $event);
-      $results        = !isset($result['result']) || \is_null($result['result']) ? [] : $result['result'];
+      $class   = self::getEventClassByEventName('onUserLogin');
+      $event   = new $class('onUserLogin', [(array) $response, $options]);
+      $this->getApplication()->getDispatcher()->dispatch($event->getName(), $event);
+      $results = $event->getArgument('result', []);
 
 			/*
 			 * If any of the user plugins did not successfully complete the login routine
@@ -538,8 +538,10 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				$user->set('cookieLogin', true);
 			}
 
+			// If there is no boolean FALSE result from any plugin the login is successful.
 			if (\in_array(false, $results, true) === false)
 			{
+				// Login successful
         // Set the user in the session, letting Joomla! know that we are logged in.
         $this->getApplication()->getSession()->set('user', $user);
 
@@ -548,10 +550,15 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				$options['responseType'] = $response->type;
 
 				// The user is successfully logged in. Run the after login events
-				//$this->getApplication()->triggerEvent('onUserAfterLogin', array($options));
-        $eventClassName = self::getEventClassByEventName('onUserAfterLogin');
-        $event          = new $eventClassName('onUserAfterLogin', [$options]);
+        $class = self::getEventClassByEventName('onUserAfterLogin');
+        $event = new $class('onUserAfterLogin', [$options]);
         $this->getApplication()->getDispatcher()->dispatch($event->getName(), $event);
+
+				$this->getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname), 'message');
+				$this->getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname));
+				$this->getApplication()->setUserState('hitobitauth.msgType', 'message');
+
+				return;
 			}
 			else
 			{
@@ -559,39 +566,24 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				$this->getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname), 'error');
 				$this->getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname));
 				$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
-
-				return false;
 			}
-
-			$this->getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname), 'message');
-			$this->getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname));
-			$this->getApplication()->setUserState('hitobitauth.msgType', 'message');
-
-			return true;
 		}
 
 		// If we are here the plugins marked a login failure. Trigger the onUserLoginFailure Event.
-		//$this->getApplication()->triggerEvent('onUserLoginFailure', array((array) $response));
-    $eventClassName = self::getEventClassByEventName('onUserLoginFailure');
-    $event          = new $eventClassName('onUserLoginFailure', [(array) $response]);
+    $class = self::getEventClassByEventName('onUserLoginFailure');
+    $event = new $class('onUserLoginFailure', [(array) $response]);
     $this->getApplication()->getDispatcher()->dispatch($event->getName(), $event);
 
     // Log the failure
     Log::add($response->error_message, Log::WARNING, 'jerror');
 
-		// If silent is set, just return false.
-		if (isset($options['silent']) && $options['silent'])
-		{
-			return false;
-		}
-
-		// If status is success, any error will have been raised by the user plugin
-		if ($response->status !== Authentication::STATUS_SUCCESS)
-		{
-			$this->getApplication()->enqueueMessage($response->error_message, 'error');
-			$this->getApplication()->setUserState('hitobitauth.msg', $response->error_message);
-			$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
-		}
+		// // If status is success, any error will have been raised by the user plugin
+		// if ($response->status !== Authentication::STATUS_SUCCESS)
+		// {
+		// 	$this->getApplication()->enqueueMessage($response->error_message, 'error');
+		// 	$this->getApplication()->setUserState('hitobitauth.msg', $response->error_message);
+		// 	$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
+		// }
 
     // Throw an exception to let the caller know that the login failed
     throw new RuntimeException($response->error_message);
