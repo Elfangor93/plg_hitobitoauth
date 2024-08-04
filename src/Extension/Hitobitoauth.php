@@ -11,11 +11,15 @@ namespace Schlumpf\Plugin\System\Hitobitoauth\Extension;
 
 \defined('_JEXEC') or die;
 
+// Plugin events
 use \Joomla\CMS\Event\CoreEventAware;
 use \Joomla\Event\DispatcherInterface;
 use \Joomla\Event\SubscriberInterface;
 use \Joomla\Event\Event;
 
+// Other sources
+use \Joomla\CMS\Plugin\PluginHelper;
+use \Joomla\CMS\Plugin\CMSPlugin;
 use \Joomla\Database\DatabaseInterface;
 use \Joomla\Http\HttpFactory;
 use \Joomla\CMS\Factory;
@@ -31,9 +35,6 @@ use \Joomla\CMS\Form\Form;
 use \Joomla\CMS\Log\Log;
 use \Joomla\CMS\Authentication\Authentication;
 use \Joomla\CMS\Authentication\AuthenticationResponse as AuthResponse;
-
-use \Joomla\CMS\Plugin\PluginHelper;
-use \Joomla\CMS\Plugin\CMSPlugin;
 use \Schlumpf\Plugin\System\Hitobitoauth\Oauth\Customclient as OAuth2ClientCustom;
 
 /**
@@ -199,11 +200,12 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 		$state = $this->getApplication()->getUserState('hitobitauth.state', null);
 
+    // Successful authentication in frontend
  		if($this->getApplication()->getUserState('hitobitauth.state', null) === true &&
 		   $this->getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
 		   $this->getApplication()->input->get('oauth',null) == 'success')
 		{
-			// Successful authetication in frontend
+			
 			$script  = 'if (window.opener != null && !window.opener.closed) {';
 			$script .=     'window.opener.location.reload();';
 			$script .= '}';
@@ -216,27 +218,28 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			return;
 		}
 
+    // Successful authetication in backend
 		if($this->getApplication()->getUserState('hitobitauth.state', null) === true &&
 		   $this->getApplication()->getUserState('hitobitauth.client', null) == 'administrator' &&
 		   $this->getApplication()->input->get('oauth',null) == 'success')
 		{
-			// Successful authetication in backend
 			echo Text::_('PLG_SYSTEM_HITOBITOAUTH_CHECK_CREDITS_SUCCESS');
 
 			$this->getApplication()->setUserState('hitobitauth.state', false);
 			die;
 		}
 
+    // Start OAuth authetication process
 		if(($this->getApplication()->input->get('task',null)=='oauth' && 
 			$this->getApplication()->input->get('app',null)=='hitobito') ||
 			$this->getApplication()->input->get('state',null)=='oauth' &&
 			$this->getApplication()->input->get('code',null) != null)
-		{
-			// Start OAuth authetication process
+		{			
 			$this->getApplication()->setUserState('hitobitauth.state', true);
 
 			if($this->getApplication()->input->get('from',null) !== null)
 			{
+        // Set client to state
 				$this->getApplication()->setUserState('hitobitauth.client', $this->getApplication()->input->get('from',null));
 			}
 
@@ -308,16 +311,17 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 				$options = array('action' => 'core.login.'.($this->getApplication()->isClient('site')?'site':'admin'), 'autoregister' => false);
 				
+        // authentication successful start login
 				$this->login($options, $response);
 
-				// if not redirected on onAfterLogin just go to front page //
+				// if not redirected on onAfterLogin just go to front page
 				$this->getApplication()->redirect(Route::_('index.php?oauth=success'));
 			}
 		}
 
+    // Output messages from user state if available
 		if($this->getApplication()->getUserState('hitobitauth.msg', null))
-		{
-			// Output messages from user state if available
+		{			
 			$msg     = $this->getApplication()->getUserState('hitobitauth.msg', null);
 			$msgType = $this->getApplication()->getUserState('hitobitauth.msgType', 'message');
 			$this->getApplication()->enqueueMessage($msg, $msgType);
@@ -326,7 +330,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			{
 				// End OAuth authetication process
 				$this->resetUserSate();
-			}			
+			}
 		}
 	}
 
@@ -370,16 +374,16 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	}
 
 	/**
-     * Adds the hitobito id field to the user editing form
-     *
-     * @param   Event  $event  The event we are handling
-     *
-     * @return  void
-     *
-     * @throws  Exception
-     * @since   4.0.0
-     */
-    public function onContentPrepareForm(Event $event): void
+   * Adds the hitobito id field to the user editing form
+   *
+   * @param   Event  $event  The event we are handling
+   *
+   * @return  void
+   *
+   * @throws  Exception
+   * @since   4.0.0
+   */
+  public function onContentPrepareForm(Event $event): void
 	{
 		/**
      * @var   Form  $form The form to be altered.
@@ -517,8 +521,8 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 		if($response->status === Authentication::STATUS_SUCCESS && !$this->error)
 		{
-
-			// OK, the credentials are authenticated and user is authorised.  Let's fire the onLogin event.
+			// OK, the credentials are authenticated and user is authorised from Oauth endpoint.
+      // Let's fire the onLogin event.
       $class   = self::getEventClassByEventName('onUserLogin');
       $event   = new $class('onUserLogin', [(array) $response, $options]);
       $this->getApplication()->getDispatcher()->dispatch($event->getName(), $event);
@@ -531,7 +535,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			 * Any errors raised should be done in the plugin as this provides the ability
 			 * to provide much more information about why the routine may have failed.
 			 */
-			$user = Factory::getContainer()->get(UserFactoryInterface::class);
+			$user = $this->hitobito_user;
 
 			if ($response->type == 'Cookie')
 			{
@@ -551,7 +555,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 				// The user is successfully logged in. Run the after login events
         $class = self::getEventClassByEventName('onUserAfterLogin');
-        $event = new $class('onUserAfterLogin', [$options]);
+        $event = new $class('onUserAfterLogin', [$options, []]);
         $this->getApplication()->getDispatcher()->dispatch($event->getName(), $event);
 
 				$this->getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_AUTH_SUCCESS', $response->fullname), 'message');
@@ -568,25 +572,24 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
 			}
 		}
+    else
+    {
+      // Authentication failed
+			$this->getApplication()->enqueueMessage($response->error_message, 'error');
+			$this->getApplication()->setUserState('hitobitauth.msg', $response->error_message);
+			$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
+
+      // Log the failure
+      Log::add($response->error_message, Log::WARNING, 'jerror');
+    }    
 
 		// If we are here the plugins marked a login failure. Trigger the onUserLoginFailure Event.
     $class = self::getEventClassByEventName('onUserLoginFailure');
-    $event = new $class('onUserLoginFailure', [(array) $response]);
+    $event = new $class('onUserLoginFailure', [(array) $response, []]);
     $this->getApplication()->getDispatcher()->dispatch($event->getName(), $event);
 
-    // Log the failure
-    Log::add($response->error_message, Log::WARNING, 'jerror');
-
-		// // If status is success, any error will have been raised by the user plugin
-		// if ($response->status !== Authentication::STATUS_SUCCESS)
-		// {
-		// 	$this->getApplication()->enqueueMessage($response->error_message, 'error');
-		// 	$this->getApplication()->setUserState('hitobitauth.msg', $response->error_message);
-		// 	$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
-		// }
-
     // Throw an exception to let the caller know that the login failed
-    throw new RuntimeException($response->error_message);
+    throw new \RuntimeException($response->error_message);
 	}
 
 	/**
@@ -778,6 +781,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		$this->getApplication()->setUserState('hitobitauth.client', null);
 		$this->getApplication()->setUserState('hitobitauth.msg', null);
 		$this->getApplication()->setUserState('hitobitauth.msgType', null);
+    //$this->getApplication()->setUserState('hitobitauth.state', null);
 	}
 
   /**
