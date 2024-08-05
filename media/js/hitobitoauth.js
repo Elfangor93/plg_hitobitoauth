@@ -1,8 +1,17 @@
 let getOAuthToken = function(event, baseUrl, client) {
   event.preventDefault();
+
+  // Listen for storage events
+  window.addEventListener('storage', function(event) {
+    if (event.key === 'hitobito_oauth_refresh' && event.newValue === 'true') {
+      window.location.reload();
+      localStorage.setItem('hitobito_oauth_refresh', 'false');
+    }
+  });
+
   let winprops = 'height=500,width=400,top=100,left=100,scrollbars=1,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,directories=no,status=no';
   let url = baseUrl+'?task=oauth&app=hitobito&from='+client;
-  window.open(url, 'Hitobito OAuth2', winprops);
+  window.open(url, 'hitobito_oauth_window', winprops);
 };
 
 let getGroups = function(event) {

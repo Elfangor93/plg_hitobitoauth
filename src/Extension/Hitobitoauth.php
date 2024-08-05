@@ -199,19 +199,19 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
       return;
     }
 
-		$state = $this->getApplication()->getUserState('hitobitauth.state', null);
+		$state  = $this->getApplication()->getUserState('hitobitauth.state', null);
+    $client = $this->getApplication()->getUserState('hitobitauth.client', null);
+    $oauth  = $this->getApplication()->input->get('oauth',null);
 
     // Successful authentication in frontend
  		if($this->getApplication()->getUserState('hitobitauth.state', null) === true &&
 		   $this->getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
 		   $this->getApplication()->input->get('oauth',null) == 'success')
 		{
-			
-			$script  = 'if (window.opener != null && !window.opener.closed) {';
-			$script .=     'window.opener.location.reload();';
-			$script .= '}';
+      $script  = 'localStorage.setItem("hitobito_oauth_refresh", "true");';
 			$script .= 'window.close();';
 
+      // Reset the user state
 			$this->getApplication()->setUserState('hitobitauth.state', false);
 			
 			echo '<script>'.$script.'</script>';
