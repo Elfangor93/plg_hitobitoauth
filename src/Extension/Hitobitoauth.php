@@ -16,6 +16,7 @@ use \Joomla\CMS\Event\CoreEventAware;
 use \Joomla\Event\DispatcherInterface;
 use \Joomla\Event\SubscriberInterface;
 use \Joomla\Event\Event;
+use \Joomla\Plugin\System\Webauthn\PluginTraits\EventReturnAware;
 
 // Other sources
 use \Joomla\CMS\Plugin\PluginHelper;
@@ -30,7 +31,6 @@ use \Joomla\CMS\Access\Access;
 use \Joomla\CMS\Language\Text;
 use \Joomla\CMS\Router\Route;
 use \Joomla\CMS\Uri\Uri;
-use \Joomla\Filesystem\Path;
 use \Joomla\CMS\Form\Form;
 use \Joomla\CMS\Log\Log;
 use \Joomla\CMS\Authentication\Authentication;
@@ -48,6 +48,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 {
   // Utility methods
   use CoreEventAware;
+  use EventReturnAware;
 
 	/**
 	 * Load plugin language files automatically
@@ -177,8 +178,8 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
         return [
 			      'onAfterRoute'			    => 'onAfterRoute',
-            'onBeforeRender'		    => 'onBeforeRender',
             'onContentPrepareForm'	=> 'onContentPrepareForm',
+            'onUserLoginButtons'    => 'onUserLoginButtons',
         ];
     }
 
@@ -334,44 +335,51 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		}
 	}
 
-	/**
-	 * Method to add the hitobito login button
-	 *
-	 * @return  void
-	 */
-	public function onBeforeRender()
-	{
-		if($this->getApplication()->isClient('site'))
+  /**
+   * Creates the additional hitobito login button
+   *
+   * @param   Event  $event  The event we are handling
+   *
+   * @return  void
+   *
+   * @see     AuthenticationHelper::getLoginButtons()
+   *
+   * @since   4.0.0
+   */
+  public function onUserLoginButtons(Event $event): void
+  {
+    if($this->getApplication()->isClient('site'))
 		{
-			$doc = $this->getApplication()->getDocument();
+      /** @var Joomla\CMS\WebAsset\WebAssetManager $wa */
+      $wa = $this->getApplication()->getDocument()->getWebAssetManager();
 
-			// script for button click
-			$script   = '';
-			$path = Path::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/oauth.js.php');
+      /** @var string $form The HTML ID of the form we are enclosed in */
+      [$form] = array_values($event->getArguments());
 
-			\ob_start();
-			include $path;
-			$script .= \ob_get_contents();
-			\ob_end_clean();
-			$doc->addScriptDeclaration($script);
+      // Add js and css
+      $css = ':root { --hitobito_bgcolor: ' . $this->params->get('hitobito_bgcolor','#99bf62') . '; --hitobito_color: ' . $this->params->get('hitobito_color','#fff') . ';}';
+      $wa->addInlineStyle($css, ['position' => 'before'], [], ['hitobitoauth.style']);
+      $wa->registerAndUseStyle('hitobitoauth.style', 'plg_system_hitobitoauth/hitobitoauth.css');
+      $wa->registerAndUseScript('hitobitoauth.script', 'plg_system_hitobitoauth/hitobitoauth.js');
 
-			// css button
-			$css = '.btn-hitobito,.btn-hitobito:hover,.btn-hitobito:active,.btn-hitobito:focus {margin-bottom: 20px; background-color: '.$this->params->get('hitobito_bgcolor','#99bf62').'; color: '.$this->params->get('hitobito_color','#fff').'; background-image: linear-gradient(to bottom,'.$this->params->get('hitobito_bgcolor','#99bf62').','.$this->params->get('hitobito_bgcolor','#99bf62').'); text-shadow: initial;}';
-			$doc->addStyleDeclaration($css);
+      // Unique ID for this button (allows display of multiple modules on the page)
+      $randomId = 'hitobito_btn-' . UserHelper::genRandomPassword(5);
 
-			// logo
-			$default = Uri::root().'plugins/system/hitobitoauth/images/hitobito_logo.png';
-			$logo = '<span><img src="'.$this->params->get('hitobito_logo', $default).'" alt="Hitobito Logo" width="20" height="15"></span> ';
+      // Get button icon
+      $default_img = Uri::root().'media/plg_system_hitobitoauth/images/hitobito_logo.png';
+      $img_html    = '<span class="icon"><img src="'.$this->params->get('hitobito_logo', $default_img).'" alt="Hitobito Logo" width="20" height="15"></span>';
 
-			// html button
-			$html = '<hr /><a id="hitobito_btn" class="btn btn-hitobito w-100" href="#" onclick="getOAuthToken(this, \'site\')">'.$logo.Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_LOGIN_WITH', $this->params->get('hitobito_name','Hitobito')).'</a>';
-			$html = \addcslashes($html,"'\"");
-
-			// add button
-			$script = 'jQuery(document).ready(function($){$(\'input[name="task"][value="user.login"], form[action*="task=user.login"] > :first-child\').closest(\'form\').find(\'input[type="submit"],button[type="submit"]\').after("'.$html.'");});';
-			$doc->addScriptDeclaration($script);
-		}
-	}
+      $this->returnFromEvent($event, [
+        [
+          'label'              => Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_LOGIN_WITH', $this->params->get('hitobito_name','Hitobito')),
+          'id'                 => $randomId,
+          'image'              => $img_html,
+          'class'              => 'btn btn-hitobito w-100',
+          'onclick'            => 'getOAuthToken(event, \''. Uri::root() .'\', \'site\')',
+        ],
+      ]);
+    }
+  }
 
 	/**
    * Adds the hitobito id field to the user editing form

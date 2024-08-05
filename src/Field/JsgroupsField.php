@@ -14,7 +14,6 @@ defined('_JEXEC') or die();
 use \Joomla\CMS\Factory;
 use \Joomla\CMS\Form\FormField;
 use \Joomla\CMS\Language\Text;
-use \Joomla\CMS\Filesystem\Path;
 
 class JsgroupsField extends FormField
 {
@@ -42,31 +41,38 @@ class JsgroupsField extends FormField
 	 */
 	protected $hiddenDescription = false;
 
-    protected function getLabel()
-    {
-		$css = '.form-horizontal .control-label {width: 300px;}';
-		Factory::getApplication()->getDocument()->addStyleDeclaration($css);
+  protected function getLabel()
+  {
+    /** @var Joomla\CMS\WebAsset\WebAssetManager $wa */
+    $wa = Factory::getApplication()->getDocument()->getWebAssetManager();
+
+    $css = '.form-horizontal .control-label {width: 300px;}';
+    $wa->addInlineStyle($css);
 
 		return '<button class="btn btn-primary" onclick="getGroups(event)">'.Text::_($this->element['label']).'</button>';
 	}
 
-    /**
-     * Method to get the user field input markup.
-     *
-     * @return  string  The field input markup.
-     *
-     * @since   1.6
-     */
-    protected function getInput()
-    {
-        $js   = '';
-        $path = Path::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/usergroups.js.php');
+  /**
+   * Method to get the user field input markup.
+   *
+   * @return  string  The field input markup.
+   *
+   * @since   1.6
+   */
+  protected function getInput()
+  {
+    // Add text strings to Javascript
+    Text::script('PLG_SYSTEM_HITOBITOAUTH_API_TOKEN_NEEDED');
+    Text::script('PLG_SYSTEM_HITOBITOAUTH_API_ERROR_CORS');
+    Text::script('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES');
+    Text::script('PLG_SYSTEM_HITOBITOAUTH_NO_AVAILABLE_ROLES');
+    Text::script('PLG_SYSTEM_HITOBITOAUTH_EXAMPLE_IMAGE');
 
-        ob_start();
-		include $path;
-		$js .= ob_get_contents();
-		ob_end_clean();
+    /** @var Joomla\CMS\WebAsset\WebAssetManager $wa */
+    $wa = Factory::getApplication()->getDocument()->getWebAssetManager();
 
-        return  $js;
-    }
+    $wa->registerAndUseScript('hitobitoauth.script', 'plg_system_hitobitoauth/hitobitoauth.js');
+
+    return '';
+  }
 }

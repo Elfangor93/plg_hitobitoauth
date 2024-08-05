@@ -11,9 +11,10 @@ namespace Schlumpf\Plugin\System\Hitobitoauth\Field;
 
 defined('_JEXEC') or die();
 
+use \Joomla\CMS\Factory;
 use \Joomla\CMS\Form\FormField;
 use \Joomla\CMS\Language\Text;
-use \Joomla\CMS\Filesystem\Path;
+use \Joomla\CMS\Uri\Uri;
 
 class JscheckcreditsField extends FormField
 {
@@ -50,7 +51,7 @@ class JscheckcreditsField extends FormField
 	 */
 	protected function getLabel()
 	{
-		$html = '<button class="btn btn-primary" onclick="getOAuthToken(this, \'administrator\')">'.Text::_($this->element['label']).'</button>';
+		$html = '<button class="btn btn-primary" onclick="getOAuthToken(event, \''. Uri::root() .'\', \'administrator\')">' . Text::_($this->element['label']) . '</button>';
 
 		return $html;
 	}
@@ -64,14 +65,18 @@ class JscheckcreditsField extends FormField
 	 */
 	protected function getInput()
 	{
-		$script   = '';
-		$path = Path::clean(JPATH_PLUGINS.'/system/hitobitoauth/layouts/oauth.js.php');
+    // Add text strings to Javascript
+    Text::script('PLG_SYSTEM_HITOBITOAUTH_API_TOKEN_NEEDED');
+    Text::script('PLG_SYSTEM_HITOBITOAUTH_API_ERROR_CORS');
+    Text::script('PLG_SYSTEM_HITOBITOAUTH_AVAILABLE_ROLES');
+    Text::script('PLG_SYSTEM_HITOBITOAUTH_NO_AVAILABLE_ROLES');
+    Text::script('PLG_SYSTEM_HITOBITOAUTH_EXAMPLE_IMAGE');
 
-		ob_start();
-		include $path;
-		$script .= ob_get_contents();
-		ob_end_clean();
+    /** @var Joomla\CMS\WebAsset\WebAssetManager $wa */
+    $wa = Factory::getApplication()->getDocument()->getWebAssetManager();
 
-        return  '<script>'.$script.'</script>';
+    $wa->registerAndUseScript('hitobitoauth.script', 'plg_system_hitobitoauth/hitobitoauth.js');
+
+    return '';
 	}
 }

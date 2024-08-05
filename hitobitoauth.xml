@@ -23,6 +23,11 @@
 		<language tag="de-DE">language/de-DE/plg_system_hitobitoauth.ini</language>
 		<language tag="de-DE">language/de-DE/plg_system_hitobitoauth.sys.ini</language>
 	</languages>
+  <media destination="plg_system_hitobitoauth" folder="media">
+    <folder>css</folder>
+    <folder>images</folder>
+    <folder>js</folder>
+  </media>
 	<config>
 		<fields name="params" addfieldprefix="Schlumpf\Plugin\System\Hitobitoauth\Field">
 			<fieldset name="basic" >
@@ -74,7 +79,8 @@
 				<field
 					name="oauth_img"
 					type="popupimage"
-					label="oauth_application_edit.jpg"
+          label="PLG_SYSTEM_HITOBITOAUTH_EXAMPLE_IMAGE_OAUTH"
+          value="oauth_application_edit.jpg"					
 				/>
 			</fieldset>
 			<fieldset name="mapping">
@@ -86,7 +92,6 @@
 				<field
 					type="text"
 					name="hitobito_groupid"
-					required="true"
 					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_DESC"
 				/>
@@ -116,7 +121,8 @@
 				<field
 					name="apitoken_img"
 					type="popupimage"
-					label="usergroup_api_token_edit.jpg"
+					label="PLG_SYSTEM_HITOBITOAUTH_EXAMPLE_IMAGE_API"
+          value="usergroup_api_token_edit.jpg"
 				/>
 				<field
 					name="title_userdata"
