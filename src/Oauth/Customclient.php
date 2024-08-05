@@ -3,7 +3,7 @@
  * @package     Joomla.Plugin
  * @subpackage  System.HitobitoOAuth
  *
- * @author      Schlumpf
+ * @author      Manuel Häusler (Schlumpf)
  * @copyright   Copyright (C) tech.spuur.ch
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
@@ -36,13 +36,6 @@ class Customclient extends OAuth2Client
 	{
 		if ($data['code'] = $this->input->get('code', false, 'raw'))
 		{
-			// $data = [
-			// 	'grant_type'    => 'authorization_code',
-			// 	'redirect_uri'  => $this->getOption('redirecturi'),
-			// 	'client_id'     => $this->getOption('clientid'),
-			// 	'client_secret' => $this->getOption('clientsecret'),
-			// ];
-
 			$data['grant_type'] = 'authorization_code';
 			$data['redirect_uri'] = $this->getOption('redirecturi');
 			$data['client_id'] = $this->getOption('clientid');

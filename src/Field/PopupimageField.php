@@ -3,7 +3,7 @@
  * @package     Joomla.Plugin
  * @subpackage  System.HitobitoOAuth
  *
- * @author      Schlumpf
+ * @author      Manuel Häusler (Schlumpf)
  * @copyright   Copyright (C) tech.spuur.ch
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */

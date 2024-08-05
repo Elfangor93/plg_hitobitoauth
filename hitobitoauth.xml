@@ -30,7 +30,19 @@
   </media>
 	<config>
 		<fields name="params" addfieldprefix="Schlumpf\Plugin\System\Hitobitoauth\Field">
-			<fieldset name="basic" >
+      <fieldset name="basic" >
+        <field
+					name="title_donate"
+					type="note"
+					label="PLG_SYSTEM_HITOBITOAUTH_DONATE_TITLE"
+				/>
+        <field
+					name="text_donate"
+					type="note"
+					description="PLG_SYSTEM_HITOBITOAUTH_DONATE_TEXT"
+				/>
+      </fieldset>
+			<fieldset name="oauth" >
 				<field
 					name="title_api"
 					type="note"
