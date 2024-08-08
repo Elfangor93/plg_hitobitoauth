@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<extension version="5.0" type="plugin" group="system" method="upgrade">
+<extension type="plugin" group="system" method="upgrade">
 	<name>plg_system_hitobitoauth</name>
-	<author>Schlumpf</author>
+	<author>Manuel Häusler (Schlumpf)</author>
 	<creationDate>August 2024</creationDate>
 	<license>GNU General Public License version 2 or later; see LICENSE.txt</license>
 	<authorEmail>tech.spuur@quickline.com</authorEmail>
@@ -9,10 +9,10 @@
 	<version>2.0.0</version>
 	<description>PLG_SYSTEM_HITOBITOAUTH_XML_DESCRIPTION</description>
 	<namespace path="src">Schlumpf\Plugin\System\Hitobitoauth</namespace>
+	<scriptfile>script.php</scriptfile>
 	<files>
 		<folder plugin="hitobitoauth">services</folder>
 		<folder>forms</folder>
-		<folder>images</folder>
 		<folder>language</folder>
 		<folder>src</folder>
 	</files>

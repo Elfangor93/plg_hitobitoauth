@@ -46,7 +46,7 @@ use \Schlumpf\Plugin\System\Hitobitoauth\Oauth\Customclient as OAuth2ClientCusto
  */
 class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 {
-  // Utility methods
+  // Utility traits
   use CoreEventAware;
   use EventReturnAware;
 
@@ -155,33 +155,33 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	}
 
 	/**
-     * Returns an array of events this subscriber will listen to.
-     *
-     * @return  array
-     *
-     * @since   1.0.0
-     */
-    public static function getSubscribedEvents(): array
-    {
-        try {
-          $app = Factory::getApplication();
-        }
-        catch (\Exception $e)
-        {
-          return [];
-        }
+	 * Returns an array of events this subscriber will listen to.
+	 *
+	 * @return  array
+	 *
+	 * @since   1.0.0
+	 */
+	public static function getSubscribedEvents(): array
+	{
+			try {
+				$app = Factory::getApplication();
+			}
+			catch (\Exception $e)
+			{
+				return [];
+			}
 
-        if (!$app->isClient('site') && !$app->isClient('administrator'))
-        {
-          return [];
-        }
+			if (!$app->isClient('site') && !$app->isClient('administrator'))
+			{
+				return [];
+			}
 
-        return [
-			      'onAfterRoute'			    => 'onAfterRoute',
-            'onContentPrepareForm'	=> 'onContentPrepareForm',
-            'onUserLoginButtons'    => 'onUserLoginButtons',
-        ];
-    }
+			return [
+					'onAfterRoute'			    => 'onAfterRoute',
+					'onContentPrepareForm'	=> 'onContentPrepareForm',
+					'onUserLoginButtons'    => 'onUserLoginButtons',
+			];
+	}
 
 	/**
 	 * Method to authenticate a user via OAuth and
@@ -198,10 +198,6 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		{
       return;
     }
-
-		$state  = $this->getApplication()->getUserState('hitobitauth.state', null);
-    $client = $this->getApplication()->getUserState('hitobitauth.client', null);
-    $oauth  = $this->getApplication()->input->get('oauth',null);
 
     // Successful authentication in frontend
  		if($this->getApplication()->getUserState('hitobitauth.state', null) === true &&
@@ -310,7 +306,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 					$this->updateUser();
 				}
 
-				$options = array('action' => 'core.login.'.($this->getApplication()->isClient('site')?'site':'admin'), 'autoregister' => false);
+				$options = array('action' => 'core.login.'.($this->getApplication()->isClient('site') ? 'site' : 'admin'), 'autoregister' => false);
 				
         // authentication successful start login
 				$this->login($options, $response);
@@ -352,9 +348,6 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		{
       /** @var Joomla\CMS\WebAsset\WebAssetManager $wa */
       $wa = $this->getApplication()->getDocument()->getWebAssetManager();
-
-      /** @var string $form The HTML ID of the form we are enclosed in */
-      [$form] = array_values($event->getArguments());
 
       // Add js and css
       $css = ':root { --hitobito_bgcolor: ' . $this->params->get('hitobito_bgcolor','#99bf62') . '; --hitobito_color: ' . $this->params->get('hitobito_color','#fff') . ';}';
