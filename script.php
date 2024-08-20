@@ -38,6 +38,33 @@ return new class () implements ServiceProviderInterface
           $this->db  = $db;
         }
 
+        public function install(InstallerAdapter $parent): bool
+        {
+          ?>
+          <div class="text-center">
+            <div class="alert alert-light">
+              <h3><?php echo Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_SUCCESS_INSTALL', $parent->getManifest()->version); ?></h3>
+              <p><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_SUCCESS_INSTALL_TXT'); ?></p>
+              <p>
+                <a title="<?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_SUCCESS_INSTALL_BTN'); ?>" class="btn btn-success btn-lg" onclick="location.href='index.php?option=com_plugins&view=plugins&filter[search]=hitobito'; return false;" href="#"><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_SUCCESS_INSTALL_BTN'); ?></a>
+              </p>
+            </div>
+          </div>
+          <?php
+
+          return true;
+        }
+
+        public function update(InstallerAdapter $parent): bool
+        {
+          return true;
+        }
+
+        public function uninstall(InstallerAdapter $parent): bool
+        {
+          return true;
+        }
+
         public function preflight(string $type, InstallerAdapter $adapter): bool
         {      
           if (version_compare(PHP_VERSION, $this->minimumPhp, '<'))
@@ -54,6 +81,11 @@ return new class () implements ServiceProviderInterface
             return false;
           }
 
+          return true;
+        }
+
+        public function postflight(string $type, InstallerAdapter $parent): bool
+        {
           return true;
         }
       }
