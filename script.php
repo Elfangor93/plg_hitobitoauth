@@ -46,7 +46,9 @@ return new class () implements ServiceProviderInterface
               <h3><?php echo Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_SUCCESS_INSTALL', $parent->getManifest()->version); ?></h3>
               <p><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_SUCCESS_INSTALL_TXT'); ?></p>
               <p>
-                <a title="<?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_SUCCESS_INSTALL_BTN'); ?>" class="btn btn-success btn-lg" onclick="location.href='index.php?option=com_plugins&view=plugins&filter[search]=hitobito'; return false;" href="#"><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_SUCCESS_INSTALL_BTN'); ?></a>
+                <a title="<?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_CONFIGURE_BTN'); ?>" class="btn btn-success" onclick="location.href='index.php?option=com_plugins&view=plugins&filter[search]=hitobito'; return false;" href="#"><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_CONFIGURE_BTN'); ?></a> 
+
+                <a class="btn btn-outline-primary" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=C28HUM53S6EC2" target="_blank"><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_DONATE'); ?></a>
               </p>
             </div>
           </div>
@@ -57,6 +59,20 @@ return new class () implements ServiceProviderInterface
 
         public function update(InstallerAdapter $parent): bool
         {
+          ?>
+          <div class="text-center">
+            <div class="alert alert-light">
+              <h3><?php echo Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_SUCCESS_UPDATE', $parent->getManifest()->version); ?></h3>
+              <p><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_SUCCESS_UPDATE_TXT'); ?></p>
+              <p>
+                <a title="<?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_CONFIGURE_BTN'); ?>" class="btn btn-success" onclick="location.href='index.php?option=com_plugins&view=plugins&filter[search]=hitobito'; return false;" href="#"><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_CONFIGURE_BTN'); ?></a> 
+
+                <a class="btn btn-outline-primary" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=C28HUM53S6EC2" target="_blank"><?php echo Text::_('PLG_SYSTEM_HITOBITOAUTH_DONATE'); ?></a>
+              </p>
+            </div>
+          </div>
+          <?php
+
           return true;
         }
 
