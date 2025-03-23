@@ -292,27 +292,37 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				$options  = array();
 				$this->onUserAuthenticate($options, $response);
 
-				if($this->params->get('registrationallowed', true) && $this->hitobito_user === true &&
-           $response->status === Authentication::STATUS_SUCCESS)
+				if($this->hitobito_user === true && $this->params->get('registrationallowed', true) &&
+				   $response->status === Authentication::STATUS_SUCCESS)
 				{
-					// perform registration
+					// Perform registration
 					$this->registerUser($response);
 				}
-
-				if($this->hitobito_user instanceof User && $this->params->get('updateallowed', true) &&
-           $response->status === Authentication::STATUS_SUCCESS)
+				elseif($this->hitobito_user instanceof User && $this->params->get('updateallowed', true) &&
+				   $response->status === Authentication::STATUS_SUCCESS)
 				{
-					// update the current joomla user based on hitobito data
+					// Update the current joomla user based on hitobito data
 					$this->updateUser();
 				}
 
-				$options = array('action' => 'core.login.'.($this->getApplication()->isClient('site') ? 'site' : 'admin'), 'autoregister' => false);
+				if($this->hitobito_user instanceof User)
+				{
+				  $options = array('action' => 'core.login.'.($this->getApplication()->isClient('site') ? 'site' : 'admin'), 'autoregister' => false);
 				
-        // authentication successful start login
-				$this->login($options, $response);
+				  // Authentication successful start login
+				  $this->login($options, $response);
 
-				// if not redirected on onAfterLogin just go to front page
-				$this->getApplication()->redirect(Route::_('index.php?oauth=success'));
+				  // If not redirected on onAfterLogin just go to front page
+				  $this->getApplication()->redirect(Route::_('index.php?oauth=success'));
+				}
+				else
+				{
+				  // Login failed
+				  $this->getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname), 'error');
+				  $this->getApplication()->setUserState('hitobitauth.msg', Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname));
+				  $this->getApplication()->setUserState('hitobitauth.msgType', 'error');
+				  $this->getApplication()->redirect(Route::_('index.php?oauth=success'));
+				}
 			}
 		}
 
@@ -474,6 +484,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				$response->email         = $this->credentials['email'];
 				$response->fullname      = $this->credentials['first_name'].' '.$this->credentials['last_name'];
 				$response->params        = $params;
+				$response->language      = '';
 				$response->error_message = '';
 
 				return true;
@@ -493,6 +504,15 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				$response->fullname      = $this->hitobito_user->name;
 				$response->params        = $this->hitobito_user->params;
 				$response->error_message = '';
+
+				if ($this->getApplication()->isClient('administrator'))
+				{
+				  $response->language = $this->hitobito_user->getParam('admin_language');
+				}
+				else
+				{
+				  $response->language = $this->hitobito_user->getParam('language');
+				}
 
 				return true;
 			}
@@ -658,15 +678,23 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		$instance->password_clear = UserHelper::genRandomPassword();
 		$instance->email          = $response->email;
 		$instance->groups         = $usergroups;
-		$instance->params         = $instance->setParam('hitobito_id', $this->credentials['id']);
+		$instance->authProvider   = 'hitobito';
+
+		$instance->setParam('hitobito_id', $this->credentials['id']);
+		$instance->setParam('admin_language', '');
+		$instance->setParam('language', '');
 
 		// save user
-		if (!$instance->save())
+		if(!$instance->save())
 		{
 			$this->getApplication()->enqueueMessage('Error in autoregistration for user: ' . $response->username, 'error');
 			Log::add('Error in autoregistration for user: ' . $response->username . '.', Log::WARNING, 'error');
 			$this->getApplication()->setUserState('hitobitauth.msg', 'Error in autoregistration for user: ' . $response->username);
 			$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
+		}
+		else
+		{
+			$this->hitobito_user = $instance;
 		}
 	}
 
