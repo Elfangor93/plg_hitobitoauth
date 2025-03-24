@@ -156,10 +156,18 @@
 					label="PLG_SYSTEM_HITOBITOAUTH_AUTOUPDATE_LABEL"
 					description="PLG_SYSTEM_HITOBITOAUTH_AUTOUPDATE_DESC"
 					class="btn-group btn-group-yesno"
+					showon="registrationallowed:1"
 					default="1">
 					<option value="1">JYES</option>
 					<option value="0">JNO</option>
 				</field>
+				<field
+					name="hitobito_groupid_allowed"
+					type="text"					
+					label="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_ALLOWED_LABEL"
+					description="PLG_SYSTEM_HITOBITOAUTH_HITOBITOGROUPID_ALLOWED_DESC"
+					showon="registrationallowed:1"
+				/>
 				<field
 					name="title_mapping"
 					type="note"

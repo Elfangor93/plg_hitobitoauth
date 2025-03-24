@@ -23,6 +23,7 @@ use \Joomla\CMS\Plugin\PluginHelper;
 use \Joomla\CMS\Plugin\CMSPlugin;
 use \Joomla\Database\DatabaseInterface;
 use \Joomla\Http\HttpFactory;
+use \Joomla\Utilities\ArrayHelper;
 use \Joomla\CMS\Factory;
 use \Joomla\CMS\User\User;
 use \Joomla\CMS\User\UserFactoryInterface;
@@ -90,7 +91,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 * @var    array
 	 * @since  1.0.0
 	 */
-	protected $credentials = array();
+	protected $credentials = [];
 
 	/**
 	 * User roles based on selected group
@@ -98,7 +99,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 * @var    array
 	 * @since  1.0.0
 	 */
-	protected $roles = array();
+	protected $roles = [];
 
 	/**
 	 * User credentials from hitobito
@@ -107,6 +108,14 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 * @since  1.0.0
 	 */
 	protected $hitobito_user = false;
+
+	/**
+	 * State of login
+	 *
+	 * @var    bool
+	 * @since  2.0.0
+	 */
+	protected $login_success = false;
 
 	/**
 	 * Error during login process
@@ -122,12 +131,12 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 * @var    array
 	 * @since  1.0.0
 	 */
-	private $allowedContext = array(
+	private $allowedContext = [
 		'com_users.profile',
 		'com_users.user',
 		'com_users.registration',
 		'com_admin.profile',
-	);
+	];
 
 	/**
 	 * Constructor.
@@ -231,23 +240,23 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			$this->getApplication()->input->get('app',null)=='hitobito') ||
 			$this->getApplication()->input->get('state',null)=='oauth' &&
 			$this->getApplication()->input->get('code',null) != null)
-		{			
+		{
+			$input = $this->getApplication()->getInput();
 			$this->getApplication()->setUserState('hitobitauth.state', true);
 
-			if($this->getApplication()->input->get('from',null) !== null)
+			if($input->get('from',null) !== null)
 			{
         // Set client to state
-				$this->getApplication()->setUserState('hitobitauth.client', $this->getApplication()->input->get('from',null));
+				$this->getApplication()->setUserState('hitobitauth.client', $input->get('from',null));
 			}
 
-			$http  = (new HttpFactory())->getHttp(array());
-			$input = $this->getApplication()->getInput();
+			$http  = (new HttpFactory())->getHttp([]);
 
-			$oauth_client = new OAuth2ClientCustom(array(), $http, $input, $this->getApplication());
+			$oauth_client = new OAuth2ClientCustom([], $http, $input, $this->getApplication());
 			$oauth_client->setOption('sendheaders',true);
 			$oauth_client->setOption('client_id','token');
-			$oauth_client->setOption('scope',array('with_roles'));
-			$oauth_client->setOption('requestparams',array('state'=>'oauth','task'=>$this->getApplication()->input->get('task',null),'access_type'=>'offline'));
+			$oauth_client->setOption('scope',['with_roles']);
+			$oauth_client->setOption('requestparams',['state'=>'oauth','task'=>$input->get('task',null),'access_type'=>'offline']);
 			$oauth_client->setOption('clientid',$this->params->get('clientid',false));
 			$oauth_client->setOption('clientsecret',$this->params->get('clientsecret',false));
 			$oauth_client->setOption('redirecturi',Uri::root());
@@ -267,16 +276,17 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 				}
 
 				// Fetch authenticated user info
-				$opts = array(
-          'http'=>array(
-            'method'=>'GET',
-            'header'=>"Authorization: Bearer $this->token\r\n" .
-                      "X-Scope: with_roles\r\n" .
-                      "Accept-Language: de\r\n"
-          )
-				);
+				$opts = [
+					'http'=>[
+						'method'=>'GET',
+						'header'=>"Authorization: Bearer $this->token\r\n" .
+											"X-Scope: with_roles\r\n" .
+											"Accept-Language: de\r\n"
+					]
+				];
+
 				$context = \stream_context_create($opts);
-				$file = \file_get_contents($this->params->get('clienthost','https://demo.hitobito.com').'/oauth/profile', false, $context);
+				$file    = \file_get_contents($this->params->get('clienthost','https://demo.hitobito.com').'/oauth/profile', false, $context);
 
 				// Safe user info to credentials
 				$this->credentials = \json_decode($file, true);
@@ -289,33 +299,37 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 
 				// Authenticate hitobito user
 				$response = new AuthResponse();
-				$options  = array();
+				$options  = [];
 				$this->onUserAuthenticate($options, $response);
 
-				if($this->hitobito_user === true && $this->params->get('registrationallowed', true) &&
-				   $response->status === Authentication::STATUS_SUCCESS)
+				if($response->status === Authentication::STATUS_SUCCESS && $this->isAllowedUsergroup())
 				{
-					// Perform registration
-					$this->registerUser($response);
-				}
-				elseif($this->hitobito_user instanceof User && $this->params->get('updateallowed', true) &&
-				   $response->status === Authentication::STATUS_SUCCESS)
-				{
-					// Update the current joomla user based on hitobito data
-					$this->updateUser();
+					// Authentication successful
+					if($this->hitobito_user === true && $this->params->get('registrationallowed', true))
+					{
+						// Perform registration
+						$this->registerUser($response);
+					}
+					elseif($this->hitobito_user instanceof User && $this->params->get('updateallowed', true))
+					{
+						// Update the current CMS user based on hitobito data
+						$this->updateUser();
+					}
 				}
 
-				if($this->hitobito_user instanceof User)
+				if( $response->status === Authentication::STATUS_SUCCESS && 
+				    $this->hitobito_user instanceof User
+				  )
 				{
-				  $options = array('action' => 'core.login.'.($this->getApplication()->isClient('site') ? 'site' : 'admin'), 'autoregister' => false);
-				
-				  // Authentication successful start login
+				  // Perform the login to the CMS
+				  $options = ['action' => 'core.login.'.($this->getApplication()->isClient('site') ? 'site' : 'admin'), 'autoregister' => false];
 				  $this->login($options, $response);
 
 				  // If not redirected on onAfterLogin just go to front page
 				  $this->getApplication()->redirect(Route::_('index.php?oauth=success'));
 				}
-				else
+
+				if(!$this->login_success)
 				{
 				  // Login failed
 				  $this->getApplication()->enqueueMessage(Text::sprintf('PLG_SYSTEM_HITOBITOAUTH_USERLOGIN_FAILED', $response->fullname), 'error');
@@ -567,8 +581,9 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			if (\in_array(false, $results, true) === false)
 			{
 				// Login successful
-        // Set the user in the session, letting Joomla! know that we are logged in.
-        $this->getApplication()->getSession()->set('user', $user);
+				// Set the user in the session, letting Joomla! know that we are logged in.
+				$this->getApplication()->getSession()->set('user', $user);
+				$this->login_success = true;
 
 				// Trigger the onUserAfterLogin event
 				$options['user'] = $user;
@@ -630,7 +645,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		$db = Factory::getContainer()->get(DatabaseInterface::class);
 		$query = $db->getQuery(true);
 
-		$query->select($db->quoteName(array('id', 'params')));
+		$query->select($db->quoteName(['id', 'params']));
 		$query->from($db->quoteName('#__users'));
 		$query->where($db->quoteName('params') . ' LIKE ' . $db->quote('%'.$hitobito_id.'%'));
 
@@ -687,9 +702,9 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		// save user
 		if(!$instance->save())
 		{
-			$this->getApplication()->enqueueMessage('Error in autoregistration for user: ' . $response->username, 'error');
+			$this->getApplication()->enqueueMessage('Error in auto registration for user: ' . $response->username, 'error');
 			Log::add('Error in autoregistration for user: ' . $response->username . '.', Log::WARNING, 'error');
-			$this->getApplication()->setUserState('hitobitauth.msg', 'Error in autoregistration for user: ' . $response->username);
+			$this->getApplication()->setUserState('hitobitauth.msg', 'Error in auto registration for user: ' . $response->username);
 			$this->getApplication()->setUserState('hitobitauth.msgType', 'error');
 		}
 		else
@@ -711,7 +726,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		$this->hitobito_user->setParam('hitobito_id', $this->credentials['id']);
 
 		// save user
-		if (!$this->hitobito_user->save(true))
+		if(!$this->hitobito_user->save(true))
 		{
 			$this->getApplication()->enqueueMessage('Error in updating user data: ' . $this->hitobito_user->username, 'error');
 			Log::add('Error in updating user data: ' . $this->hitobito_user->username . '.', Log::WARNING, 'error');
@@ -729,9 +744,9 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 	 */
 	protected function getRolesOfGroup($group_id)
 	{
-		$group_roles = array();
+		$group_roles = [];
 
-		foreach ($this->credentials['roles'] as $key => $role)
+		foreach($this->credentials['roles'] as $key => $role)
 		{
 			if($role['group_id'] == $group_id)
 			{
@@ -753,13 +768,13 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 		if($this->params->get('groupmapping', false) == false || empty($this->params->get('groupmapping', false)))
 		{
 			// Use default usergroup
-			$usergroups = array(\intval($this->params->get('cms_group_default', 0)));
+			$usergroups = [\intval($this->params->get('cms_group_default', 0))];
 		}
 		else
 		{
 			// Perform mapping
-			$usergroups = array();
-			foreach ($this->params->get('groupmapping', false) as $key => $map)
+			$usergroups = [];
+			foreach($this->params->get('groupmapping', false) as $key => $map)
 			{
 				if(\in_array($map->hitobito_group, $this->roles))
 				{
@@ -781,7 +796,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
 			if(\count($usergroups) == 0)
 			{
 				// Use default usergroup if no matches in mapping
-				$usergroups = array(\intval($this->params->get('cms_group_default', 0)));
+				$usergroups = [\intval($this->params->get('cms_group_default', 0))];
 			}
 		}
 
@@ -813,6 +828,37 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
     //$this->getApplication()->setUserState('hitobitauth.state', null);
 	}
 
+	/**
+	 *  Checks if this user is part of an allowed Hitobito usergroup
+	 * 
+	 * @return  bool
+	 */
+	protected function isAllowedUsergroup()
+	{
+		$allowed_ids = \trim($this->params->get('hitobito_groupid_allowed', ''));
+
+		if($allowed_ids === '')
+		{
+			// Empty field means everyone can login
+			return true;
+		}
+
+		// Validate the param field
+		$allowed_ids = \explode(',', $allowed_ids);
+		$allowed_ids = ArrayHelper::toInteger($allowed_ids);
+
+		foreach($this->credentials['roles'] as $role)
+		{
+			if(\in_array($role['group_id'], $allowed_ids))
+			{
+				// At least one group id matches
+				return true;
+			}
+		}
+
+		return false;
+	}
+
   /**
    * Returns the plugin result
    *
@@ -834,7 +880,7 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
     if($array)
     {
       $result   = $event->getArgument('result', []) ?: [];
-		  $result   = is_array($result) ? $result : [];
+		  $result   = \is_array($result) ? $result : [];
 		  $result[] = $value;
     }
     else

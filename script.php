@@ -30,7 +30,7 @@ return new class () implements ServiceProviderInterface
         private DatabaseInterface $db;
 
         private string $minimumJoomla = '5.0.0';
-        private string $minimumPhp    = '7.4.0';
+        private string $minimumPhp    = '8.0.0';
 
         public function __construct(AdministratorApplication $app, DatabaseInterface $db)
         {
