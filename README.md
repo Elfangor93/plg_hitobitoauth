@@ -1,5 +1,6 @@
 # Hitobito Authentication Plugin (plg_hitobito_oauth)
-Authentication and Login to Joomla using OAuth2 interface of [Hitobito](https://github.com/hitobito/hitobito).
+Authentication and Login to Joomla! CMS using OAuth2 interface of [Hitobito](https://github.com/hitobito/hitobito).
+For more info visit the [project website](https://tech.spuur.ch/en/downloads/download/2-joomla-extensions/10-hitobito-authentication-plugin.html).
 
 ## Credits
 Big thanks to [PBS](https://github.com/scout-ch) and everybody involved in helping me with advice and testing of this plugin.
