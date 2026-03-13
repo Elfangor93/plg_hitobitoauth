@@ -9,8 +9,6 @@
  */
 namespace Schlumpf\Plugin\System\Hitobitoauth\Oauth;
 
-\defined('JPATH_PLATFORM') or die;
-
 use \Joomla\OAuth2\Client as OAuth2Client;
 
 use \Joomla\Application\WebApplicationInterface;
@@ -34,37 +32,39 @@ class Customclient extends OAuth2Client
 	 */
 	public function authenticate()
 	{
-		if ($data['code'] = $this->input->get('code', false, 'raw'))
+		$dataCode = $this->input->get('code', false, 'raw');
+
+		if($dataCode)
 		{
-			$data['grant_type'] = 'authorization_code';
-			$data['redirect_uri'] = $this->getOption('redirecturi');
-			$data['client_id'] = $this->getOption('clientid');
-			$data['client_secret'] = $this->getOption('clientsecret');
+			$data = [
+				'grant_type'    => 'authorization_code',
+				'redirect_uri'  => $this->getOption('redirecturi'),
+				'client_id'     => $this->getOption('clientid'),
+				'client_secret' => $this->getOption('clientsecret'),
+				'code'          => $dataCode,
+			];
+
 			$response = $this->http->post($this->getOption('tokenurl'), $data);
 
-			if (!($response->code >= 200 && $response->code < 400))
+			if($response->getStatusCode() < 200 || $response->getStatusCode() >= 400)
 			{
 				throw new UnexpectedResponseException(
 					$response,
 					sprintf(
 						'Error code %s received requesting access token: %s.',
-						$response->code,
-						$response->body
+						$response->getStatusCode(),
+						(string) $response->getBody()
 					)
 				);
 			}
 
-			// Make sure all headers are lowercase
-			//$response->headers = array_change_key_case($response->headers, CASE_LOWER);
-			$key = (array_key_exists('Content-Type', $response->headers)) ? 'Content-Type' : 'content-type';
-
-			if (strpos($response->headers[$key][0], 'application/json') !== false)
+			if(array_filter($response->getHeader('Content-Type'), fn($v) => str_contains($v, "application/json")))
 			{
-				$token = array_merge(json_decode($response->body, true), ['created' => time()]);
+				$token = array_merge(json_decode((string) $response->getBody(), true), ['created' => time()]);
 			}
 			else
 			{
-				parse_str($response->body, $token);
+				parse_str((string) $response->getBody(), $token);
 				$token = array_merge($token, ['created' => time()]);
 			}
 
@@ -73,12 +73,12 @@ class Customclient extends OAuth2Client
 			return $token;
 		}
 
-		if ($this->getOption('sendheaders'))
+		if($this->getOption('sendheaders'))
 		{
-			if (!($this->application instanceof WebApplicationInterface))
+			if(!($this->application instanceof WebApplicationInterface))
 			{
 				throw new \RuntimeException(
-					\sprintf('A "%s" implementation is required to process authentication.', WebApplicationInterface::class)
+						\sprintf('A "%s" implementation is required to process authentication.', WebApplicationInterface::class)
 				);
 			}
 
