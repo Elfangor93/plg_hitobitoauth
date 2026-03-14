@@ -208,9 +208,6 @@ class Hitobitoauth extends CMSPlugin implements SubscriberInterface
       return;
     }
 
-		$input = $this->getApplication()->getInput();
-		$session = $this->getApplication()->getUserState('hitobitauth');
-
     // Successful authentication in frontend
  		if( $this->getApplication()->getUserState('hitobitauth.state', null) === true &&
 		    $this->getApplication()->getUserState('hitobitauth.client', null) == 'site' &&
